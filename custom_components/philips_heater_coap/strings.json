@@ -1,0 +1,56 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Philips Heater",
+        "description": "Enter the IP address of your Philips heater. Connection can take up to 60 seconds. If it fails, the device may be slow to respond - please try again.",
+        "data": {
+          "host": "IP Address"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Connection timed out. The device may be slow to respond or unavailable. Please verify the IP address and try again.",
+      "unknown": "An unexpected error occurred. Please check the logs and try again."
+    }
+  },
+  "entity": {
+    "select": {
+      "update_method": {
+        "name": "Update method",
+        "state": {
+          "observe": "Observe (Push)",
+          "polling": "Polling"
+        }
+      }
+    },
+    "number": {
+      "polling_interval": {
+        "name": "Polling interval"
+      }
+    }
+  },
+  "climate": {
+    "philips_heater_coap": {
+      "state_attributes": {
+        "preset_mode": {
+          "state": {
+            "auto": "Auto",
+            "low": "Low",
+            "medium": "Medium",
+            "high": "High",
+            "ventilation": "Ventilation"
+          }
+        }
+      }
+    }
+  },
+  "selector": {
+    "update_method": {
+      "options": {
+        "observe": "Observe - Real-time push updates with automatic reconnection",
+        "polling": "Polling - Periodic status requests at configured interval"
+      }
+    }
+  }
+}

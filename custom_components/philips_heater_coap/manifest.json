@@ -1,0 +1,12 @@
+{
+  "domain": "philips_heater_coap",
+  "name": "Philips Heater (CoAP)",
+  "codeowners": ["@mrverrall"],
+  "config_flow": true,
+  "documentation": "https://github.com/mrverrall/philips-heater-coap",
+  "issue_tracker": "https://github.com/mrverrall/philips-heater-coap/issues",
+  "integration_type": "device",
+  "iot_class": "local_push",
+  "requirements": ["aioairctrl==0.2.5"],
+  "version": "1.0"
+}
