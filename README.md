@@ -4,18 +4,19 @@
 [![GitHub release](https://img.shields.io/github/release/mrverrall/philips-heater-coap.svg)](https://github.com/mrverrall/philips-heater-coap/releases)
 [![License](https://img.shields.io/github/license/mrverrall/philips-heater-coap.svg)](LICENSE)
 
-A Home Assistant custom component for **Philips heaters only** (CX3120, CX5120) using the CoAP protocol.
+A Home Assistant custom component for **Philips heaters** (CX3120, CX5120) using the CoAP protocol.
 
 ## About This Project
 
-This integration is a **simplified rewrite** focusing exclusively on **heater functionality**. It's based on the [philips-airpurifier-coap](https://github.com/kongo09/philips-airpurifier-coap) project by [@kongo09](https://github.com/kongo09), which is the current active implementation for Philips CoAP devices. This focused rewrite provides a simpler, more maintainable codebase specifically for Philips heaters.
+This integration focuses exclusively on **Philips heaters**. It's inspired by the [philips-airpurifier-coap](https://github.com/kongo09/philips-airpurifier-coap) project by [@kongo09](https://github.com/kongo09), which is a current active implementation for Philips CoAP devices. This focused rewrite provides a simple, maintainable codebase specifically for Philips heaters.
 
 **Credit**: Thanks to [@kongo09](https://github.com/kongo09) for the comprehensive multi-device implementation and to previous contributors in the lineage of Philips CoAP projects.
 
 ## Features
 
 - 🌡️ **Full climate entity support** - Complete Home Assistant climate platform integration
-- 🔄 **Functional oscillation control** - Working swing mode implementation
+- 💫 **Functional oscillation control** - Working swing mode implementation
+- 🔥 **Heating intensity sensor** - Track heating mode, including in auto presets
 - ⚡ **Real-time updates via CoAP observe protocol** - Instant push updates when device state changes
 - 🔄 **Polling mode fallback** with configurable interval
 - 🔌 **Automatic reconnection** with exponential backoff
