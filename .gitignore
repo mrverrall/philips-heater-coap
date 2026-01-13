@@ -43,6 +43,7 @@ Thumbs.db
 htmlcov/
 .tox/
 __pycache__/
+local_debug_tools/
 
 # Home Assistant
 secrets.yaml
