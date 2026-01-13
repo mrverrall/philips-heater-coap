@@ -26,9 +26,7 @@ class PhilipsApi:
     
     # Control
     POWER = "D03102"
-    MODE = "D0310A"             # Mode (1=fan, 2=circulation, 3=heating)
-    HEATING_INTENSITY = "D0310C"  # Heating intensity (0=auto, 65=high, 66=low, -127=fan)
-    FAN_SPEED = "D0310D"        # Fan speed setting
+    OPERATING_MODE = "D0310C"  # Primary mode control (0=auto, 65=high, 66=low, -127=vent)
     TARGET_TEMP = "D0310E"      # Target temperature (set point)
     CHILD_LOCK = "D03106"
     DISPLAY_BACKLIGHT = "D03105"
@@ -38,18 +36,12 @@ class PhilipsApi:
     
     # Sensors
     TEMPERATURE = "D03224"      # Current temperature
-    HEATING_STATUS = "D0313F"   # Heating action/intensity status (hvac_action)
+    FAN_SPEED = "D0310D"        # Unknown function (constant at 2)
+    HEATING_STATUS = "D0313F"   # Heating action/intensity status (0, 65, 66, 67, -16)
 
 
-# HVAC modes mapping
-MODE_MAP = {
-    1: "fan",           # Fan only
-    2: "circulation",   # Circulation
-    3: "heating",       # Heating
-}
-
-# Heating intensity to HVAC action mapping
-HEATING_INTENSITY_MAP = {
+# Heating status to HVAC action mapping (maps HEATING_STATUS sensor values)
+HEATING_ACTION_MAP = {
     0: HVACAction.FAN,      # Fan only
     65: HVACAction.HEATING,  # Strong heating
     66: HVACAction.HEATING,  # Low heating
@@ -57,19 +49,21 @@ HEATING_INTENSITY_MAP = {
     -16: HVACAction.IDLE,    # Auto+ reached target, idle
 }
 
-# Preset modes
-PRESET_AUTO = "auto"
+HEATING_INTENSITY_MAP = {
+    -16: "Not Heating",    # Auto+ reached target, idle
+    0: "Not Heating",      # Fan only
+    65: "High", 
+    66: "Low",
+    67: "Medium",  # Medium heating
+}
+
+# Preset modes - only used in HEAT mode to select intensity
 PRESET_LOW = "low"
-PRESET_MEDIUM = "medium"
 PRESET_HIGH = "high"
-PRESET_VENTILATION = "ventilation"
 
 PRESET_MODES = {
-    PRESET_AUTO: {PhilipsApi.MODE: 3, PhilipsApi.HEATING_INTENSITY: 0},
-    PRESET_LOW: {PhilipsApi.MODE: 3, PhilipsApi.HEATING_INTENSITY: 66},
-    PRESET_MEDIUM: {PhilipsApi.MODE: 3, PhilipsApi.HEATING_INTENSITY: 66},  # Same as low
-    PRESET_HIGH: {PhilipsApi.MODE: 3, PhilipsApi.HEATING_INTENSITY: 65},
-    PRESET_VENTILATION: {PhilipsApi.MODE: 1, PhilipsApi.HEATING_INTENSITY: -127},
+    PRESET_LOW: {PhilipsApi.OPERATING_MODE: 66},
+    PRESET_HIGH: {PhilipsApi.OPERATING_MODE: 65},
 }
 
 # Temperature limits

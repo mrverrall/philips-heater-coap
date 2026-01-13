@@ -21,19 +21,16 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
     DOMAIN,
-    HEATING_INTENSITY_MAP,
+    HEATING_ACTION_MAP,
     MAX_TEMP,
     MIN_TEMP,
     OSCILLATION_OFF,
     OSCILLATION_ON,
     OSCILLATION_STATUS,
     PhilipsApi,
-    PRESET_AUTO,
     PRESET_HIGH,
     PRESET_LOW,
-    PRESET_MEDIUM,
     PRESET_MODES,
-    PRESET_VENTILATION,
     TARGET_TEMP_STEP,
 )
 
@@ -136,16 +133,13 @@ class PhilipsHeaterClimate(ClimateEntity):
         status = self._coordinator.data if self._is_polling else self._coordinator.status
         attrs = {
             "update_method": "polling" if self._is_polling else "observe",
-            "heating_intensity": status.get(PhilipsApi.HEATING_STATUS, 0),
+            "operating_mode": status.get(PhilipsApi.OPERATING_MODE, 0),
+            "heating_status_code": status.get(PhilipsApi.HEATING_STATUS, 0),
         }
         
         # Add fan speed if available
         if (fan_speed := status.get(PhilipsApi.FAN_SPEED)) is not None:
             attrs["fan_speed"] = fan_speed
-        
-        # Add mode value
-        if (mode := status.get(PhilipsApi.MODE)) is not None:
-            attrs["mode_value"] = mode
             
         return attrs
 
@@ -160,7 +154,10 @@ class PhilipsHeaterClimate(ClimateEntity):
 
     @property
     def target_temperature(self) -> int | None:
-        """Return the target temperature."""
+        """Return the target temperature - only applicable in AUTO mode."""
+        if self.hvac_mode != HVACMode.AUTO:
+            return None
+        
         status = self._coordinator.data if self._is_polling else self._coordinator.status
         return status.get(PhilipsApi.TARGET_TEMP)
 
@@ -171,14 +168,19 @@ class PhilipsHeaterClimate(ClimateEntity):
             return HVACMode.OFF
         
         status = self._coordinator.data if self._is_polling else self._coordinator.status
-        mode = status.get(PhilipsApi.MODE, 1)
+        operating_mode = status.get(PhilipsApi.OPERATING_MODE, 0)
+        heating_status = status.get(PhilipsApi.HEATING_STATUS, 0)
         
-        if mode == 3:  # Heating mode
-            if self.preset_mode == PRESET_AUTO:
-                return HVACMode.AUTO
-            return HVACMode.HEAT
-        else:  # Fan or circulation
+        # Determine mode from OPERATING_MODE and HEATING_STATUS
+        # If heating_status is -16 (auto idle) or operating_mode is 0, we're in AUTO
+        if operating_mode == 0 or heating_status == -16:
+            return HVACMode.AUTO
+        # If operating_mode is -127 or heating_status is 0 (and not auto), we're in FAN_ONLY
+        elif operating_mode == -127 or (heating_status == 0 and operating_mode != 0):
             return HVACMode.FAN_ONLY
+        # Otherwise manual heating (65=high, 66=low)
+        else:
+            return HVACMode.HEAT
 
     @property
     def hvac_action(self) -> HVACAction | None:
@@ -188,19 +190,22 @@ class PhilipsHeaterClimate(ClimateEntity):
         
         status = self._coordinator.data if self._is_polling else self._coordinator.status
         intensity = status.get(PhilipsApi.HEATING_STATUS, 0)
-        return HEATING_INTENSITY_MAP.get(intensity, HVACAction.IDLE)
+        return HEATING_ACTION_MAP.get(intensity, HVACAction.IDLE)
 
     @property
     def preset_mode(self) -> str | None:
-        """Return current preset mode."""
+        """Return current preset mode - only applies to HEAT mode."""
+        if self.hvac_mode != HVACMode.HEAT:
+            return None
+        
         status = self._coordinator.data if self._is_polling else self._coordinator.status
-        for preset, pattern in PRESET_MODES.items():
-            match = all(
-                status.get(k) == v
-                for k, v in pattern.items()
-            )
-            if match:
-                return preset
+        mode = status.get(PhilipsApi.OPERATING_MODE, 66)
+        
+        # Map OPERATING_MODE to preset
+        if mode == 65:
+            return PRESET_HIGH
+        elif mode == 66:
+            return PRESET_LOW
         return None
 
     @property
@@ -231,11 +236,15 @@ class PhilipsHeaterClimate(ClimateEntity):
         if hvac_mode == HVACMode.OFF:
             await self.async_turn_off()
         elif hvac_mode == HVACMode.AUTO:
-            await self.async_set_preset_mode(PRESET_AUTO)
+            await self._coordinator.client.set_control_values({PhilipsApi.OPERATING_MODE: 0})
+            await self.async_turn_on()
         elif hvac_mode == HVACMode.FAN_ONLY:
-            await self.async_set_preset_mode(PRESET_VENTILATION)
+            await self._coordinator.client.set_control_values({PhilipsApi.OPERATING_MODE: -127})
+            await self.async_turn_on()
         elif hvac_mode == HVACMode.HEAT:
-            await self.async_set_preset_mode(PRESET_MEDIUM)
+            # Default to low heat, user can change via preset
+            await self.async_set_preset_mode(PRESET_LOW)
+            await self.async_turn_on()
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set preset mode."""

@@ -20,15 +20,6 @@ from .const import DOMAIN, PhilipsApi
 
 _LOGGER = logging.getLogger(__name__)
 
-# Map heating intensity values to readable states
-# Only includes actual heating states; 0 (fan only) and -16 (auto idle) return None
-HEATING_INTENSITY_MAP = {
-    65: "High",
-    66: "Low",
-    67: "Medium",
-}
-
-
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -150,11 +141,11 @@ class PhilipsHeaterTemperatureSensor(PhilipsHeaterSensorBase):
 
 
 class PhilipsHeaterIntensitySensor(PhilipsHeaterSensorBase):
-    """Heating intensity sensor for Philips Heater."""
+    """Heating status sensor for Philips Heater."""
 
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = list(HEATING_INTENSITY_MAP.values())
-    _attr_name = "Heating Intensity"
+    _attr_options = list(MAu.values())
+    _attr_name = "Heating Status"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(
@@ -172,10 +163,10 @@ class PhilipsHeaterIntensitySensor(PhilipsHeaterSensorBase):
 
     @property
     def native_value(self) -> str | None:
-        """Return the current heating intensity."""
+        """Return the current heating status."""
         status = self._coordinator.data if self._is_polling else self._coordinator.status
         if status:
-            intensity = status.get(PhilipsApi.HEATING_STATUS)
-            if intensity is not None:
-                return HEATING_INTENSITY_MAP.get(intensity, "Unknown")
+            heating_status = status.get(PhilipsApi.HEATING_STATUS)
+            if heating_status is not None:
+                return PhilipsApi.HEATING_INTENSITY_MAP.get(heating_status, "Unknown")
         return None
