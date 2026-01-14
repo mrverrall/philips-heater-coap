@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, PhilipsApi, HEATING_INTENSITY_MAP
+from .const import DOMAIN, PhilipsApi, HEATING_INTENSITY_MAP, OPERATING_MODE_MAP
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,6 +36,8 @@ async def async_setup_entry(
     sensors = [
         PhilipsHeaterTemperatureSensor(coordinator, entry, host, name, model, device_id),
         PhilipsHeaterIntensitySensor(coordinator, entry, host, name, model, device_id),
+        PhilipsHeaterHeatingModeSensor(coordinator, entry, host, name, model, device_id),
+        PhilipsHeaterTargetTemperatureSensor(coordinator, entry, host, name, model, device_id),
     ]
     
     async_add_entities(sensors)
@@ -168,4 +170,67 @@ class PhilipsHeaterIntensitySensor(PhilipsHeaterSensorBase):
             heating_status = status.get(PhilipsApi.HEATING_STATUS)
             if heating_status is not None:
                 return HEATING_INTENSITY_MAP.get(heating_status, "Unknown")
+        return None
+
+
+class PhilipsHeaterHeatingModeSensor(PhilipsHeaterSensorBase):
+    """Heating mode sensor for Philips Heater."""
+
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = list(OPERATING_MODE_MAP.values())
+    _attr_name = "Heating Mode"
+
+    def __init__(
+        self,
+        coordinator,
+        entry: ConfigEntry,
+        host: str,
+        device_name: str,
+        model: str,
+        device_id: str,
+    ) -> None:
+        """Initialize the heating mode sensor."""
+        super().__init__(coordinator, entry, host, device_name, model, device_id)
+        self._attr_unique_id = f"{device_id}_heating_mode"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the current heating mode."""
+        status = self._coordinator.data if self._is_polling else self._coordinator.status
+        if status:
+            operating_mode = status.get(PhilipsApi.OPERATING_MODE)
+            if operating_mode is not None:
+                return OPERATING_MODE_MAP.get(operating_mode, "Unknown")
+        return None
+
+
+class PhilipsHeaterTargetTemperatureSensor(PhilipsHeaterSensorBase):
+    """Target temperature sensor for Philips Heater."""
+
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_name = "Target Temperature"
+
+    def __init__(
+        self,
+        coordinator,
+        entry: ConfigEntry,
+        host: str,
+        device_name: str,
+        model: str,
+        device_id: str,
+    ) -> None:
+        """Initialize the target temperature sensor."""
+        super().__init__(coordinator, entry, host, device_name, model, device_id)
+        self._attr_unique_id = f"{device_id}_target_temperature"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the target temperature."""
+        status = self._coordinator.data if self._is_polling else self._coordinator.status
+        if status:
+            target_temp = status.get(PhilipsApi.TARGET_TEMP)
+            if target_temp is not None:
+                return round(target_temp / 10, 1)  # Device returns temp * 10
         return None

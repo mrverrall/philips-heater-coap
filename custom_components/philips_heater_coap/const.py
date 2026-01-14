@@ -57,6 +57,13 @@ HEATING_INTENSITY_MAP = {
     67: "Medium",  # Medium heating
 }
 
+OPERATING_MODE_MAP = {
+    0: "Auto", 
+    65: "High",
+    66: "Low",
+    -127: "Fan",
+}
+
 # Preset modes - only used in HEAT mode to select intensity
 PRESET_LOW = "low"
 PRESET_HIGH = "high"
