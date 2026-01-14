@@ -232,5 +232,5 @@ class PhilipsHeaterTargetTemperatureSensor(PhilipsHeaterSensorBase):
         if status:
             target_temp = status.get(PhilipsApi.TARGET_TEMP)
             if target_temp is not None:
-                return round(target_temp / 10, 1)  # Device returns temp * 10
+                return target_temp
         return None
