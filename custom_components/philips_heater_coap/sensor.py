@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, PhilipsApi
+from .const import DOMAIN, PhilipsApi, HEATING_INTENSITY_MAP
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -144,9 +144,8 @@ class PhilipsHeaterIntensitySensor(PhilipsHeaterSensorBase):
     """Heating status sensor for Philips Heater."""
 
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = list(MAu.values())
-    _attr_name = "Heating Status"
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_options = list(HEATING_INTENSITY_MAP.values())
+    _attr_name = "Heating Intensity"
 
     def __init__(
         self,
@@ -168,5 +167,5 @@ class PhilipsHeaterIntensitySensor(PhilipsHeaterSensorBase):
         if status:
             heating_status = status.get(PhilipsApi.HEATING_STATUS)
             if heating_status is not None:
-                return PhilipsApi.HEATING_INTENSITY_MAP.get(heating_status, "Unknown")
+                return HEATING_INTENSITY_MAP.get(heating_status, "Unknown")
         return None
