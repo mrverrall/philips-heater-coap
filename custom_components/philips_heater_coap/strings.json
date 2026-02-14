@@ -36,9 +36,11 @@
         "preset_mode": {
           "state": {
             "auto": "Auto",
+            "auto_plus": "Auto+",
             "low": "Low",
             "medium": "Medium",
             "high": "High",
+            "fan": "Fan",
             "ventilation": "Ventilation"
           }
         }

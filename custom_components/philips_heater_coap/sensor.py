@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, PhilipsApi, HEATING_INTENSITY_MAP, OPERATING_MODE_MAP
+from .const import DOMAIN, PhilipsApi, HEATING_INTENSITY_MAP, HEATING_MODE_VALUES, OPERATING_MODE_MAP
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -146,6 +146,7 @@ class PhilipsHeaterIntensitySensor(PhilipsHeaterSensorBase):
     """Heating status sensor for Philips Heater."""
 
     _attr_device_class = SensorDeviceClass.ENUM
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_options = list(HEATING_INTENSITY_MAP.values())
     _attr_name = "Heating Intensity"
 
@@ -177,7 +178,8 @@ class PhilipsHeaterHeatingModeSensor(PhilipsHeaterSensorBase):
     """Heating mode sensor for Philips Heater."""
 
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = list(OPERATING_MODE_MAP.values())
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_options = HEATING_MODE_VALUES
     _attr_name = "Heating Mode"
 
     def __init__(
@@ -198,6 +200,11 @@ class PhilipsHeaterHeatingModeSensor(PhilipsHeaterSensorBase):
         """Return the current heating mode."""
         status = self._coordinator.data if self._is_polling else self._coordinator.status
         if status:
+            # Check if power is off first
+            power = status.get(PhilipsApi.POWER)
+            if power == 0:
+                return "Off"
+            
             operating_mode = status.get(PhilipsApi.OPERATING_MODE)
             if operating_mode is not None:
                 return OPERATING_MODE_MAP.get(operating_mode, "Unknown")
@@ -208,6 +215,7 @@ class PhilipsHeaterTargetTemperatureSensor(PhilipsHeaterSensorBase):
     """Target temperature sensor for Philips Heater."""
 
     _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_name = "Target Temperature"
@@ -230,6 +238,11 @@ class PhilipsHeaterTargetTemperatureSensor(PhilipsHeaterSensorBase):
         """Return the target temperature."""
         status = self._coordinator.data if self._is_polling else self._coordinator.status
         if status:
+            # Don't report target temp when device is off
+            power = status.get(PhilipsApi.POWER)
+            if power == 0:
+                return None
+            
             target_temp = status.get(PhilipsApi.TARGET_TEMP)
             if target_temp is not None:
                 return target_temp

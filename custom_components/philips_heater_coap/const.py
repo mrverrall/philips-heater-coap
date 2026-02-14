@@ -64,14 +64,31 @@ OPERATING_MODE_MAP = {
     -127: "Fan",
 }
 
-# Preset modes - only used in HEAT mode to select intensity
+# Valid heating mode values (includes Off for when power is 0)
+HEATING_MODE_VALUES = ["Off", "Auto", "High", "Low", "Fan"]
+
+# Preset modes - can be used across different HVAC modes
 PRESET_LOW = "low"
 PRESET_HIGH = "high"
+PRESET_AUTO = "auto"
+PRESET_FAN = "fan"
+PRESET_AUTO_PLUS = "auto_plus"
 
 PRESET_MODES = {
     PRESET_LOW: {PhilipsApi.OPERATING_MODE: 66},
     PRESET_HIGH: {PhilipsApi.OPERATING_MODE: 65},
+    PRESET_AUTO: {PhilipsApi.OPERATING_MODE: 0},
+    PRESET_FAN: {PhilipsApi.OPERATING_MODE: -127},
+    # AUTO_PLUS is handled specially in climate.py
 }
+
+# Configuration options
+CONF_DEFAULT_HEAT_PRESET = "default_heat_preset"
+CONF_AUTO_PLUS_OFFSET = "auto_plus_offset"
+
+# Default values for options
+DEFAULT_HEAT_PRESET = PRESET_LOW
+DEFAULT_AUTO_PLUS_OFFSET = 2
 
 # Temperature limits
 MIN_TEMP = 1

@@ -4,22 +4,24 @@
 [![GitHub release](https://img.shields.io/github/release/mrverrall/philips-heater-coap.svg)](https://github.com/mrverrall/philips-heater-coap/releases)
 [![License](https://img.shields.io/github/license/mrverrall/philips-heater-coap.svg)](LICENSE)
 
-A Home Assistant custom component for **Philips heaters** (CX3120, CX5120) using the CoAP protocol.
+A Home Assistant custom component for **Philips heaters** (CX3120, CX5120) providing **local control** via the CoAP protocol. This integration communicates directly with your heater on your local network—no Philips cloud service or mobile app required. All control is completely local and works without internet access.
 
 ## About This Project
 
-This integration focuses exclusively on **Philips heaters**. It's inspired by the [philips-airpurifier-coap](https://github.com/kongo09/philips-airpurifier-coap) project by [@kongo09](https://github.com/kongo09), which is a current active implementation for Philips CoAP devices. This focused rewrite provides a simple, maintainable codebase specifically for Philips heaters.
+This integration focuses exclusively on Philips heaters, providing a simple and maintainable codebase. It's inspired by the [philips-airpurifier-coap](https://github.com/kongo09/philips-airpurifier-coap) project by [@kongo09](https://github.com/kongo09), which is a current active implementation for Philips CoAP devices.
 
 **Credit**: Thanks to [@kongo09](https://github.com/kongo09) for the comprehensive multi-device implementation and to previous contributors in the lineage of Philips CoAP projects.
 
 ## Features
 
-- 🌡️ **Full climate entity support** - Complete Home Assistant climate platform integration
+- 🌡️ **Full climate entity support** - Complete Home Assistant climate platform integration with multiple HVAC modes
+- 🎯 **Advanced preset modes** - Low, High, Auto, Fan, and Auto+ with configurable temperature offset
+- 🔧 **Configurable default heat preset** - Set the default preset when switching to heat mode (useful for Matterbridge and other integrations that only support basic HVAC modes)
 - 💫 **Functional oscillation control** - Working swing mode implementation
-- 🔥 **Heating intensity sensor** - Track heating mode, including in auto presets
+- 🔥 **Heating status sensors** - Real-time heating intensity, temperatures and operating mode tracking
 - ⚡ **Real-time updates via CoAP observe protocol** - Instant push updates when device state changes
-- 🔄 **Polling mode fallback** with configurable interval
-- 🔌 **Automatic reconnection** with exponential backoff
+- 🔄 **Polling mode fallback** with configurable interval (5-300 seconds)
+- 🔌 **Automatic reconnection** with exponential backoff for reliable operation
 
 ## Supported Devices
 
@@ -58,16 +60,25 @@ The integration will automatically discover and configure your heater.
 
 ### Device Configuration
 
-After adding the integration, you can configure update behavior on the device page:
+After adding the integration, configure settings via the configuration entities on the device page:
 
 1. Go to **Settings** → **Devices & Services**
 2. Find your Philips heater device
-3. Click on the device to see configuration entities:
+3. Click on the device to see all entities, including configuration entities:
    - **Update Method**: Choose between "observe" (push updates) or "polling"
    - **Polling Interval**: Set update frequency when using polling mode (5-300 seconds)
+   - **Default Heat Preset**: Choose which preset to use when switching to heat mode (low, high, auto, auto+, or fan)
+   - **Auto+ Temperature Offset**: Set the temperature offset (1-10°C) above current temperature for Auto+ preset
 
-**Observe mode** (default) uses CoAP observe for real-time push updates with automatic reconnection.  
-**Polling mode** periodically requests status updates at the configured interval.
+**Update Methods:**
+- **Observe mode** (default) uses CoAP observe for real-time push updates with automatic reconnection
+- **Polling mode** periodically requests status updates at the configured interval
+
+**Default Heat Preset:**
+This setting controls which preset is activated when switching to heat mode. This is particularly useful when using the heater with Matterbridge or other integrations that only support basic HVAC modes (heat/off). When these integrations switch the heater to "heat" mode, it will use your configured default preset (low, high, auto, auto+, or fan).
+
+**Auto+ Preset:**
+The Auto+ preset enables automatic temperature control with a configurable offset above the current room temperature. For example, with a 2°C offset and current temperature of 18°C, the heater will target 20°C in auto mode.
 
 ## Requirements
 
@@ -77,11 +88,26 @@ After adding the integration, you can configure update behavior on the device pa
 
 ## Usage
 
-The integration provides full climate control with:
-- Multiple HVAC and preset modes
-- Temperature control and monitoring
-- Oscillation control
-- Heating intensity sensor
+The integration provides comprehensive climate control:
+
+### Climate Entity
+- **HVAC Modes**: Off, Heat, Auto, Fan Only
+- **Preset Modes**: Low, High, Auto, Auto+, Fan
+- **Target Temperature**: Set when in Auto or Auto+ mode
+- **Oscillation**: Enable/disable swing mode
+- **Current Temperature**: Real-time room temperature
+
+### Sensors
+- **Temperature**: Current room temperature
+- **Heating Intensity**: Shows current heating level (Not Heating, Low, High, Medium)
+- **Heating Mode**: Current operating mode (Off, Low, High, Auto, Fan)
+- **Target Temperature**: Configured target temperature (when applicable)
+
+### Configuration Entities
+- **Update Method**: Select push (observe) or polling updates
+- **Polling Interval**: Adjust update frequency for polling mode
+- **Default Heat Preset**: Control preset used when switching to heat mode
+- **Auto+ Temperature Offset**: Set offset for Auto+ preset
 
 ## Troubleshooting
 

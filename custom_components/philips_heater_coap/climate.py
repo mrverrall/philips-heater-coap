@@ -20,6 +20,10 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
+    CONF_AUTO_PLUS_OFFSET,
+    CONF_DEFAULT_HEAT_PRESET,
+    DEFAULT_AUTO_PLUS_OFFSET,
+    DEFAULT_HEAT_PRESET,
     DOMAIN,
     HEATING_ACTION_MAP,
     MAX_TEMP,
@@ -28,6 +32,9 @@ from .const import (
     OSCILLATION_ON,
     OSCILLATION_STATUS,
     PhilipsApi,
+    PRESET_AUTO,
+    PRESET_AUTO_PLUS,
+    PRESET_FAN,
     PRESET_HIGH,
     PRESET_LOW,
     PRESET_MODES,
@@ -76,6 +83,7 @@ class PhilipsHeaterClimate(ClimateEntity):
     def __init__(self, coordinator, entry: ConfigEntry, host: str, device_name: str, model: str, device_id: str) -> None:
         """Initialize the climate device."""
         self._coordinator = coordinator
+        self._entry = entry
         self._host = host
         self._model = model
         self._device_id = device_id
@@ -194,18 +202,22 @@ class PhilipsHeaterClimate(ClimateEntity):
 
     @property
     def preset_mode(self) -> str | None:
-        """Return current preset mode - only applies to HEAT mode."""
-        if self.hvac_mode != HVACMode.HEAT:
+        """Return current preset mode."""
+        if not self.is_on:
             return None
         
         status = self._coordinator.data if self._is_polling else self._coordinator.status
         mode = status.get(PhilipsApi.OPERATING_MODE, 66)
         
         # Map OPERATING_MODE to preset
-        if mode == 65:
+        if mode == 0:
+            return PRESET_AUTO
+        elif mode == 65:
             return PRESET_HIGH
         elif mode == 66:
             return PRESET_LOW
+        elif mode == -127:
+            return PRESET_FAN
         return None
 
     @property
@@ -242,16 +254,38 @@ class PhilipsHeaterClimate(ClimateEntity):
             await self._coordinator.client.set_control_values({PhilipsApi.OPERATING_MODE: -127})
             await self.async_turn_on()
         elif hvac_mode == HVACMode.HEAT:
-            # Default to low heat, user can change via preset
-            await self.async_set_preset_mode(PRESET_LOW)
+            # Use configured default heat preset
+            default_preset = self._entry.options.get(CONF_DEFAULT_HEAT_PRESET, DEFAULT_HEAT_PRESET)
+            await self.async_set_preset_mode(default_preset)
             await self.async_turn_on()
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set preset mode."""
-        if preset_mode not in PRESET_MODES:
+        if preset_mode == PRESET_AUTO_PLUS:
+            # Auto+ mode: set to auto mode and adjust target temp
+            # Only recalculate if not already in auto mode to prevent
+            # repeated selections from incrementing the target
+            status = self._coordinator.data if self._is_polling else self._coordinator.status
+            current_mode = status.get(PhilipsApi.OPERATING_MODE)
+            
+            if current_mode != 0:  # Not already in auto mode
+                offset = self._entry.options.get(CONF_AUTO_PLUS_OFFSET, DEFAULT_AUTO_PLUS_OFFSET)
+                current_temp = self.current_temperature
+                if current_temp is not None:
+                    target = int(current_temp) + offset
+                    target = max(self._attr_min_temp, min(target, self._attr_max_temp))
+                    await self._coordinator.client.set_control_values({
+                        PhilipsApi.OPERATING_MODE: 0,  # Auto mode
+                        PhilipsApi.TARGET_TEMP: target,
+                    })
+                else:
+                    # Fallback to regular auto if no current temperature
+                    await self._coordinator.client.set_control_values({PhilipsApi.OPERATING_MODE: 0})
+        elif preset_mode in PRESET_MODES:
+            await self._coordinator.client.set_control_values(PRESET_MODES[preset_mode])
+        else:
             return
         
-        await self._coordinator.client.set_control_values(PRESET_MODES[preset_mode])
         await self.async_turn_on()
 
     async def async_set_swing_mode(self, swing_mode: str) -> None:
