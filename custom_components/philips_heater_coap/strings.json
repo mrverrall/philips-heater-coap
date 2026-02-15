@@ -30,23 +30,6 @@
       }
     }
   },
-  "climate": {
-    "philips_heater_coap": {
-      "state_attributes": {
-        "preset_mode": {
-          "state": {
-            "auto": "Auto",
-            "auto_plus": "Auto+",
-            "low": "Low",
-            "medium": "Medium",
-            "high": "High",
-            "fan": "Fan",
-            "ventilation": "Ventilation"
-          }
-        }
-      }
-    }
-  },
   "selector": {
     "update_method": {
       "options": {
