@@ -1,4 +1,4 @@
-# Philips Heater CoAP Integration for Home Assistant
+# Philips Heater Integration for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![GitHub release](https://img.shields.io/github/release/mrverrall/philips-heater-coap.svg)](https://github.com/mrverrall/philips-heater-coap/releases)
@@ -39,7 +39,7 @@ This integration focuses exclusively on Philips heaters, providing a simple and 
 5. Add this repository URL: `https://github.com/mrverrall/philips-heater-coap`
 6. Select category: "Integration"
 7. Click "Add"
-8. Find "Philips Heater (CoAP)" in HACS and install it
+8. Find "Philips Heater" in HACS and install it
 9. Restart Home Assistant
 
 ### Manual Installation
@@ -52,7 +52,7 @@ This integration focuses exclusively on Philips heaters, providing a simple and 
 
 1. Go to **Settings** → **Devices & Services**
 2. Click **Add Integration**
-3. Search for "Philips Heater (CoAP)"
+3. Search for "Philips Heater"
 4. Enter your heater's IP address
 5. Click Submit
 
