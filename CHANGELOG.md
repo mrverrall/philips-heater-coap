@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3] - 2026-03-01
+
+### Added
+- **CoAP Observe Watchdog**: 120s timeout to detect and recover from stale observe connections
+
+### Changed
+- Default polling interval increased from 10s to 20s to match the device's observe push cadence
+- Auto+ preset is now selectable from the HA preset list and always applies the configured offset from current room temperature when chosen (device state reports back as Auto, which accurately reflects the device's mode)
+
+### Fixed
+- Auto+ preset was not appearing in the HA preset selector
+- Selecting Auto+ when already in Auto mode did not apply the temperature offset
+
 ## [1.2] - 2026-02-14
 
 ### Added
