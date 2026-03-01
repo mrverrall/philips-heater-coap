@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo, EntityDescription
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_AUTO_PLUS_OFFSET, DEFAULT_AUTO_PLUS_OFFSET, DOMAIN
+from .const import CONF_AUTO_PLUS_OFFSET, DEFAULT_AUTO_PLUS_OFFSET, DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ class PollingIntervalNumber(NumberEntity):
     @property
     def native_value(self) -> float:
         """Return the current polling interval."""
-        return self._entry.options.get("scan_interval", 10)
+        return self._entry.options.get("scan_interval", DEFAULT_SCAN_INTERVAL)
 
     @property
     def available(self) -> bool:

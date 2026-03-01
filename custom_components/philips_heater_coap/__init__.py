@@ -16,12 +16,11 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN
+from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.CLIMATE, Platform.SELECT, Platform.NUMBER, Platform.SENSOR]
-DEFAULT_SCAN_INTERVAL = 10
 STORAGE_VERSION = 1
 STORAGE_KEY = "philips_heater_coap"
 WATCHDOG_TIMEOUT = 120  # seconds without update before reconnecting

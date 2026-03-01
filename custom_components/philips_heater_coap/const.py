@@ -89,6 +89,7 @@ CONF_AUTO_PLUS_OFFSET = "auto_plus_offset"
 # Default values for options
 DEFAULT_HEAT_PRESET = PRESET_LOW
 DEFAULT_AUTO_PLUS_OFFSET = 2
+DEFAULT_SCAN_INTERVAL = 20  # matches the server's ~20s observe push cadence
 
 # Temperature limits
 MIN_TEMP = 1
