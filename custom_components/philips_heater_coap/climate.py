@@ -65,7 +65,7 @@ class PhilipsHeaterClimate(ClimateEntity):
 
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT, HVACMode.AUTO, HVACMode.FAN_ONLY]
-    _attr_preset_modes = list(PRESET_MODES.keys())
+    _attr_preset_modes = [*PRESET_MODES.keys(), PRESET_AUTO_PLUS]
     _attr_target_temperature_step = TARGET_TEMP_STEP
     _attr_min_temp = MIN_TEMP
     _attr_max_temp = MAX_TEMP
@@ -262,25 +262,19 @@ class PhilipsHeaterClimate(ClimateEntity):
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set preset mode."""
         if preset_mode == PRESET_AUTO_PLUS:
-            # Auto+ mode: set to auto mode and adjust target temp
-            # Only recalculate if not already in auto mode to prevent
-            # repeated selections from incrementing the target
-            status = self._coordinator.data if self._is_polling else self._coordinator.status
-            current_mode = status.get(PhilipsApi.OPERATING_MODE)
-            
-            if current_mode != 0:  # Not already in auto mode
-                offset = self._entry.options.get(CONF_AUTO_PLUS_OFFSET, DEFAULT_AUTO_PLUS_OFFSET)
-                current_temp = self.current_temperature
-                if current_temp is not None:
-                    target = int(current_temp) + offset
-                    target = max(self._attr_min_temp, min(target, self._attr_max_temp))
-                    await self._coordinator.client.set_control_values({
-                        PhilipsApi.OPERATING_MODE: 0,  # Auto mode
-                        PhilipsApi.TARGET_TEMP: target,
-                    })
-                else:
-                    # Fallback to regular auto if no current temperature
-                    await self._coordinator.client.set_control_values({PhilipsApi.OPERATING_MODE: 0})
+            # Auto+ mode: set to auto and raise target temp by configured offset
+            offset = self._entry.options.get(CONF_AUTO_PLUS_OFFSET, DEFAULT_AUTO_PLUS_OFFSET)
+            current_temp = self.current_temperature
+            if current_temp is not None:
+                target = int(current_temp) + offset
+                target = max(self._attr_min_temp, min(target, self._attr_max_temp))
+                await self._coordinator.client.set_control_values({
+                    PhilipsApi.OPERATING_MODE: 0,  # Auto mode
+                    PhilipsApi.TARGET_TEMP: target,
+                })
+            else:
+                # Fallback to regular auto if no current temperature
+                await self._coordinator.client.set_control_values({PhilipsApi.OPERATING_MODE: 0})
         elif preset_mode in PRESET_MODES:
             await self._coordinator.client.set_control_values(PRESET_MODES[preset_mode])
         else:
