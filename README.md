@@ -136,7 +136,6 @@ logger:
   default: info
   logs:
     custom_components.philips_heater_coap: debug
-    aioairctrl: debug
 ```
 
 ## Development
