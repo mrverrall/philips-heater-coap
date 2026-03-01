@@ -24,6 +24,7 @@ PLATFORMS = [Platform.CLIMATE, Platform.SELECT, Platform.NUMBER, Platform.SENSOR
 DEFAULT_SCAN_INTERVAL = 10
 STORAGE_VERSION = 1
 STORAGE_KEY = "philips_heater_coap"
+WATCHDOG_TIMEOUT = 120  # seconds without update before reconnecting
 
 
 class HeaterObserveCoordinator:
@@ -88,15 +89,33 @@ class HeaterObserveCoordinator:
         while True:
             try:
                 _LOGGER.debug("Starting CoAP observe for %s", self.host)
-                async for status in self.client.observe_status():
-                    self.status = status
-                    retry_delay = 5  # Reset retry delay on successful update
-                    # Save status to storage for restoration after restart
-                    await self._store.async_save(status)
-                    for update_callback in self._listeners:
-                        update_callback()
-                
-                # If observe ends normally (shouldn't happen), reconnect
+                observe_gen = self.client.observe_status()
+                try:
+                    while True:
+                        try:
+                            status = await asyncio.wait_for(
+                                observe_gen.__anext__(), timeout=WATCHDOG_TIMEOUT
+                            )
+                        except asyncio.TimeoutError:
+                            _LOGGER.warning(
+                                "No status update received from %s in %ds "
+                                "(watchdog triggered), reconnecting...",
+                                self.host,
+                                WATCHDOG_TIMEOUT,
+                            )
+                            break
+                        except StopAsyncIteration:
+                            break
+                        self.status = status
+                        retry_delay = 5  # Reset retry delay on successful update
+                        # Save status to storage for restoration after restart
+                        await self._store.async_save(status)
+                        for update_callback in self._listeners:
+                            update_callback()
+                finally:
+                    await observe_gen.aclose()
+
+                # If observe ends normally or watchdog fires, reconnect
                 _LOGGER.warning("CoAP observe ended for %s, reconnecting...", self.host)
                 
             except asyncio.CancelledError:
