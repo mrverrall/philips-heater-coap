@@ -38,6 +38,7 @@ class PhilipsApi:
     TEMPERATURE = "D03224"      # Current temperature
     FAN_SPEED = "D0310D"        # Unknown function (constant at 2)
     HEATING_STATUS = "D0313F"   # Heating action/intensity status (0, 65, 66, 67, -16)
+    STATUS_TYPE = "StatusType"  # Update type: "control" (user action) or "status" (periodic ~20s heartbeat)
 
 
 # Heating status to HVAC action mapping (maps HEATING_STATUS sensor values)

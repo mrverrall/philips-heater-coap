@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from typing import Any
 
 from aioairctrl import CoAPClient
@@ -13,37 +14,54 @@ from homeassistant.const import CONF_HOST, Platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.storage import Store
+import homeassistant.helpers.entity_registry as er
 
-from .const import DOMAIN
+from .const import DOMAIN, PhilipsApi
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.CLIMATE, Platform.SELECT, Platform.NUMBER, Platform.SENSOR]
 STORAGE_VERSION = 1
 STORAGE_KEY = "philips_heater_coap"
-WATCHDOG_TIMEOUT = 120  # seconds without update before reconnecting
+WATCHDOG_TIMEOUT = 86400  # seconds without update before reconnecting
+RECONNECT_DELAY_INITIAL = 30  # seconds before first reconnect attempt
+RECONNECT_DELAY_MAX = 3600  # max seconds between reconnect attempts (1 hour)
 
 
 class HeaterObserveCoordinator:
     """Coordinator for Philips Heater using CoAP observe (push updates)."""
 
-    def __init__(self, hass: HomeAssistant, client: CoAPClient, host: str, status: dict[str, Any], entry_id: str) -> None:
+    def __init__(self, hass: HomeAssistant, host: str, entry_id: str) -> None:
         """Initialize coordinator."""
         self.hass = hass
-        self.client = client
         self.host = host
-        self.status = status
+        self.status: dict[str, Any] = {}
+        self.client: CoAPClient | None = None
         self._listeners: list = []
         self._task: asyncio.Task | None = None
-        self._reconnect_task: asyncio.Task | None = None
         self._store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.{entry_id}")
+        # Observe frequency stats
+        self._connected_at: float | None = None
+        self._last_update_at: float | None = None
+        self._longest_wait: float = 0.0
+        self._update_intervals: list[float] = []
+
+    async def async_start(self) -> None:
+        """Load cached state, create CoAP client, and start observing."""
+        self.status = await self._store.async_load() or {}
+        try:
+            self.client = await asyncio.wait_for(
+                CoAPClient.create(self.host), timeout=15
+            )
+        except Exception as err:
+            raise ConfigEntryNotReady(f"Cannot connect to {self.host}") from err
+        self._connected_at = time.monotonic()
+        self._task = asyncio.create_task(self._async_observe_status())
 
     async def shutdown(self) -> None:
         """Shutdown the connection."""
         if self._task:
             self._task.cancel()
-        if self._reconnect_task:
-            self._reconnect_task.cancel()
         if self.client:
             try:
                 await self.client.shutdown()
@@ -54,36 +72,46 @@ class HeaterObserveCoordinator:
     @callback
     def async_add_listener(self, update_callback) -> callable:
         """Add listener for updates."""
-        start_observing = not self._listeners
         self._listeners.append(update_callback)
-
-        if start_observing:
-            self._start_observing()
 
         @callback
         def remove_listener() -> None:
             self._listeners.remove(update_callback)
-            if not self._listeners:
-                if self._task:
-                    self._task.cancel()
-                    self._task = None
-                if self._reconnect_task:
-                    self._reconnect_task.cancel()
-                    self._reconnect_task = None
 
         return remove_listener
 
-    def _start_observing(self) -> None:
-        """Start observing status updates."""
-        if self._task is None:
-            self._task = asyncio.create_task(self._async_observe_status())
-
     async def _async_observe_status(self) -> None:
         """Observe status updates from device with automatic reconnection."""
-        retry_delay = 5  # Start with 5 seconds
-        max_retry_delay = 300  # Max 5 minutes
+        reconnect_delay = RECONNECT_DELAY_INITIAL
+        max_reconnect_delay = RECONNECT_DELAY_MAX
         
         while True:
+            # Ensure we have a valid client before attempting to observe
+            if self.client is None:
+                try:
+                    _LOGGER.info("Connecting to %s", self.host)
+                    self.client = await asyncio.wait_for(
+                        CoAPClient.create(self.host), timeout=30
+                    )
+                    _LOGGER.info("Connected to %s", self.host)
+                    self._connected_at = time.monotonic()
+                    self._last_update_at = None
+                    self._longest_wait = 0.0
+                    self._update_intervals = []
+                except asyncio.CancelledError:
+                    raise
+                except Exception as err:
+                    _LOGGER.error(
+                        "Failed to connect to %s: %s. Retrying in %ds...",
+                        self.host, err, reconnect_delay,
+                    )
+                    try:
+                        await asyncio.sleep(reconnect_delay)
+                    except asyncio.CancelledError:
+                        raise
+                    reconnect_delay = min(reconnect_delay * 2, max_reconnect_delay)
+                    continue
+
             try:
                 _LOGGER.debug("Starting CoAP observe for %s", self.host)
                 observe_gen = self.client.observe_status()
@@ -103,8 +131,33 @@ class HeaterObserveCoordinator:
                             break
                         except StopAsyncIteration:
                             break
+                        changes = {k: v for k, v in status.items() if self.status.get(k) != v}
                         self.status = status
-                        retry_delay = 5  # Reset retry delay on successful update
+                        now = time.monotonic()
+                        if self._last_update_at is not None:
+                            interval = now - self._last_update_at
+                            self._update_intervals.append(interval)
+                            self._longest_wait = max(self._longest_wait, interval)
+                        self._last_update_at = now
+                        avg = (
+                            sum(self._update_intervals) / len(self._update_intervals)
+                            if self._update_intervals else None
+                        )
+                        conn_age = now - self._connected_at if self._connected_at is not None else None
+                        status_type = status.get(PhilipsApi.STATUS_TYPE, "unknown")
+                        log = _LOGGER.info if status_type == "control" else _LOGGER.debug
+                        log(
+                            "Observe [%s] from %s | changed=%s conn_age=%.0fs"
+                            " last_interval=%s avg_interval=%s longest_wait=%.1fs",
+                            status_type,
+                            self.host,
+                            changes,
+                            conn_age or 0,
+                            f"{self._update_intervals[-1]:.1f}s" if self._update_intervals else "n/a",
+                            f"{avg:.1f}s" if avg is not None else "n/a",
+                            self._longest_wait,
+                        )
+                        reconnect_delay = RECONNECT_DELAY_INITIAL  # Reset retry delay on successful update
                         # Save status to storage for restoration after restart
                         await self._store.async_save(status)
                         for update_callback in self._listeners:
@@ -114,40 +167,38 @@ class HeaterObserveCoordinator:
 
                 # If observe ends normally or watchdog fires, reconnect
                 _LOGGER.warning("CoAP observe ended for %s, reconnecting...", self.host)
-                
+
             except asyncio.CancelledError:
                 _LOGGER.debug("CoAP observe cancelled for %s", self.host)
                 raise
-                
+
             except Exception as err:
                 _LOGGER.error(
-                    "Error observing status for %s: %s. Reconnecting in %d seconds...",
-                    self.host,
-                    err,
-                    retry_delay,
+                    "Error observing status for %s: %s. Reconnecting in %ds...",
+                    self.host, err, reconnect_delay,
                 )
-            
+
             # Wait before reconnecting
             try:
-                await asyncio.sleep(retry_delay)
+                await asyncio.sleep(reconnect_delay)
             except asyncio.CancelledError:
                 raise
-            
+
             # Exponential backoff for retries
-            retry_delay = min(retry_delay * 2, max_retry_delay)
-            
-            # Try to recreate the client connection
+            reconnect_delay = min(reconnect_delay * 2, max_reconnect_delay)
+
+            # Tear down the client so the top of the loop rebuilds it cleanly
             try:
-                _LOGGER.info("Attempting to reconnect to %s", self.host)
                 if self.client:
                     await self.client.shutdown()
-                self.client = await asyncio.wait_for(
-                    CoAPClient.create(self.host),
-                    timeout=30
-                )
-                _LOGGER.info("Successfully reconnected to %s", self.host)
             except Exception as err:
-                _LOGGER.error("Failed to reconnect to %s: %s", self.host, err)
+                _LOGGER.debug("Error shutting down client for %s (expected): %s", self.host, err)
+            finally:
+                self.client = None
+                self._connected_at = None
+                self._last_update_at = None
+                self._longest_wait = 0.0
+                self._update_intervals = []
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -155,55 +206,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     host = entry.data[CONF_HOST]
 
-    # Try to restore last known state
-    store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.{entry.entry_id}")
-    cached_status = await store.async_load()
-    
-    try:
-        # Create CoAP client with short timeout - don't block HA startup
-        _LOGGER.debug("Creating CoAP client for %s", host)
-        client = await asyncio.wait_for(
-            CoAPClient.create(host),
-            timeout=5
-        )
+    coordinator = HeaterObserveCoordinator(hass, host, entry.entry_id)
 
-        # Get initial status with short timeout
-        _LOGGER.debug("Getting initial status from %s", host)
-        status, _ = await asyncio.wait_for(
-            client.get_status(),
-            timeout=5
-        )
+    # Coordinator owns all connection logic; raises ConfigEntryNotReady if unreachable
+    await coordinator.async_start()
 
-        _LOGGER.info("Connected to Philips heater at %s", host)
+    # Remove entities that no longer exist (polling was removed in 1.4)
+    device_id = entry.data.get("device_id", entry.entry_id)
+    entity_reg = er.async_get(hass)
+    for unique_id_suffix in ("update_method", "polling_interval"):
+        entity_id = entity_reg.async_get_entity_id(Platform.SELECT if unique_id_suffix == "update_method" else Platform.NUMBER, DOMAIN, f"{device_id}_{unique_id_suffix}")
+        if entity_id:
+            entity_reg.async_remove(entity_id)
+            _LOGGER.debug("Removed stale entity %s", entity_id)
 
-    except asyncio.TimeoutError:
-        # Don't block HA startup - let coordinator handle reconnection
-        _LOGGER.warning(
-            "Timeout connecting to %s during startup. "
-            "Integration will retry in background.",
-            host
-        )
-        # Create client without verification - coordinator will reconnect
-        client = await CoAPClient.create(host)
-        # Use cached status if available, otherwise empty dict
-        status = cached_status if cached_status else {}
-        if cached_status:
-            _LOGGER.info("Using cached status for %s until device reconnects", host)
-    except Exception as err:
-        _LOGGER.error("Failed to connect to %s: %s", host, err)
-        raise ConfigEntryNotReady(f"Failed to connect to {host}") from err
-    # Create coordinator
-    coordinator = HeaterObserveCoordinator(hass, client, host, status, entry.entry_id)
-    # Store coordinator
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
-    
-    # Set up platforms
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    
-    # Listen for options updates
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
-    
+
     return True
 
 
