@@ -64,12 +64,8 @@ class PhilipsHeaterSensorBase(SensorEntity):
         self._device_id = device_id
         self._remove_listener = None
         
-        # Check if using polling coordinator
-        self._is_polling = hasattr(coordinator, 'async_request_refresh')
-        self._attr_should_poll = self._is_polling
-        
         # Get device status for version info
-        status = coordinator.status if hasattr(coordinator, 'status') else coordinator.data
+        status = coordinator.status
         
         # Device info for device registry
         self._attr_device_info = DeviceInfo(
@@ -83,18 +79,11 @@ class PhilipsHeaterSensorBase(SensorEntity):
 
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
-        if self._is_polling:
-            # Polling coordinator - use standard CoordinatorEntity pattern
-            self.async_on_remove(
-                self._coordinator.async_add_listener(self._handle_coordinator_update)
-            )
-        else:
-            # Observe coordinator - use custom listener pattern
-            self._remove_listener = self._coordinator.async_add_listener(self._handle_coordinator_update)
+        self._remove_listener = self._coordinator.async_add_listener(self._handle_coordinator_update)
 
     async def async_will_remove_from_hass(self) -> None:
         """When entity is removed from hass."""
-        if not self._is_polling and self._remove_listener:
+        if self._remove_listener:
             self._remove_listener()
 
     @callback
@@ -105,8 +94,6 @@ class PhilipsHeaterSensorBase(SensorEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        if self._is_polling:
-            return self._coordinator.last_update_success
         return self._coordinator.status is not None
 
 
@@ -134,7 +121,7 @@ class PhilipsHeaterTemperatureSensor(PhilipsHeaterSensorBase):
     @property
     def native_value(self) -> float | None:
         """Return the current temperature."""
-        status = self._coordinator.data if self._is_polling else self._coordinator.status
+        status = self._coordinator.status
         if status:
             temp = status.get(PhilipsApi.TEMPERATURE)
             if temp is not None:
@@ -166,7 +153,7 @@ class PhilipsHeaterIntensitySensor(PhilipsHeaterSensorBase):
     @property
     def native_value(self) -> str | None:
         """Return the current heating status."""
-        status = self._coordinator.data if self._is_polling else self._coordinator.status
+        status = self._coordinator.status
         if status:
             heating_status = status.get(PhilipsApi.HEATING_STATUS)
             if heating_status is not None:
@@ -198,7 +185,7 @@ class PhilipsHeaterHeatingModeSensor(PhilipsHeaterSensorBase):
     @property
     def native_value(self) -> str | None:
         """Return the current heating mode."""
-        status = self._coordinator.data if self._is_polling else self._coordinator.status
+        status = self._coordinator.status
         if status:
             # Check if power is off first
             power = status.get(PhilipsApi.POWER)
@@ -236,7 +223,7 @@ class PhilipsHeaterTargetTemperatureSensor(PhilipsHeaterSensorBase):
     @property
     def native_value(self) -> float | None:
         """Return the target temperature."""
-        status = self._coordinator.data if self._is_polling else self._coordinator.status
+        status = self._coordinator.status
         if status:
             # Don't report target temp when device is off
             power = status.get(PhilipsApi.POWER)

@@ -90,10 +90,6 @@ class PhilipsHeaterClimate(ClimateEntity):
         self._attr_unique_id = f"{device_id}_climate"
         self._remove_listener = None
         
-        # Check if using polling coordinator
-        self._is_polling = hasattr(coordinator, 'async_request_refresh')
-        self._attr_should_poll = self._is_polling
-        
         # Get device status for version info
         status = coordinator.status
         
@@ -109,18 +105,11 @@ class PhilipsHeaterClimate(ClimateEntity):
 
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
-        if self._is_polling:
-            # Polling coordinator - use standard CoordinatorEntity pattern
-            self.async_on_remove(
-                self._coordinator.async_add_listener(self._handle_coordinator_update)
-            )
-        else:
-            # Observe coordinator - use custom listener pattern
-            self._remove_listener = self._coordinator.async_add_listener(self._handle_coordinator_update)
+        self._remove_listener = self._coordinator.async_add_listener(self._handle_coordinator_update)
 
     async def async_will_remove_from_hass(self) -> None:
         """When entity is removed from hass."""
-        if not self._is_polling and self._remove_listener:
+        if self._remove_listener:
             self._remove_listener()
 
     @callback
@@ -131,16 +120,13 @@ class PhilipsHeaterClimate(ClimateEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        if self._is_polling:
-            return self._coordinator.last_update_success
         return self._coordinator.status is not None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return entity specific state attributes."""
-        status = self._coordinator.data if self._is_polling else self._coordinator.status
+        status = self._coordinator.status
         attrs = {
-            "update_method": "polling" if self._is_polling else "observe",
             "operating_mode": status.get(PhilipsApi.OPERATING_MODE, 0),
             "heating_status_code": status.get(PhilipsApi.HEATING_STATUS, 0),
         }
@@ -154,7 +140,7 @@ class PhilipsHeaterClimate(ClimateEntity):
     @property
     def current_temperature(self) -> float | None:
         """Return the current temperature."""
-        status = self._coordinator.data if self._is_polling else self._coordinator.status
+        status = self._coordinator.status
         temp = status.get(PhilipsApi.TEMPERATURE)
         if temp is not None:
             return temp / 10  # Device returns temp * 10
@@ -166,7 +152,7 @@ class PhilipsHeaterClimate(ClimateEntity):
         if self.hvac_mode != HVACMode.AUTO:
             return None
         
-        status = self._coordinator.data if self._is_polling else self._coordinator.status
+        status = self._coordinator.status
         return status.get(PhilipsApi.TARGET_TEMP)
 
     @property
@@ -175,7 +161,7 @@ class PhilipsHeaterClimate(ClimateEntity):
         if not self.is_on:
             return HVACMode.OFF
         
-        status = self._coordinator.data if self._is_polling else self._coordinator.status
+        status = self._coordinator.status
         operating_mode = status.get(PhilipsApi.OPERATING_MODE, 0)
         heating_status = status.get(PhilipsApi.HEATING_STATUS, 0)
         
@@ -196,7 +182,7 @@ class PhilipsHeaterClimate(ClimateEntity):
         if not self.is_on:
             return HVACAction.OFF
         
-        status = self._coordinator.data if self._is_polling else self._coordinator.status
+        status = self._coordinator.status
         intensity = status.get(PhilipsApi.HEATING_STATUS, 0)
         return HEATING_ACTION_MAP.get(intensity, HVACAction.IDLE)
 
@@ -206,7 +192,7 @@ class PhilipsHeaterClimate(ClimateEntity):
         if not self.is_on:
             return None
         
-        status = self._coordinator.data if self._is_polling else self._coordinator.status
+        status = self._coordinator.status
         mode = status.get(PhilipsApi.OPERATING_MODE, 66)
         
         # Map OPERATING_MODE to preset
@@ -223,14 +209,14 @@ class PhilipsHeaterClimate(ClimateEntity):
     @property
     def swing_mode(self) -> str:
         """Return swing mode."""
-        status = self._coordinator.data if self._is_polling else self._coordinator.status
+        status = self._coordinator.status
         osc = status.get(PhilipsApi.OSCILLATION, 0)
         return SWING_ON if osc in (OSCILLATION_ON, OSCILLATION_STATUS) else SWING_OFF
 
     @property
     def is_on(self) -> bool:
         """Return True if device is on."""
-        status = self._coordinator.data if self._is_polling else self._coordinator.status
+        status = self._coordinator.status
         return status.get(PhilipsApi.POWER) == 1
 
     async def async_set_temperature(self, **kwargs: Any) -> None:

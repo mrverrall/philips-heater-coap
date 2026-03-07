@@ -20,7 +20,6 @@ This integration focuses exclusively on Philips heaters, providing a simple and 
 - 💫 **Functional oscillation control** - Working swing mode implementation
 - 🔥 **Heating status sensors** - Real-time heating intensity, temperatures and operating mode tracking
 - ⚡ **Real-time updates via CoAP observe protocol** - Instant push updates when device state changes
-- 🔄 **Polling mode fallback** with configurable interval (5-300 seconds)
 - 🔌 **Automatic reconnection** with exponential backoff for reliable operation
 
 ## Supported Devices
@@ -65,15 +64,8 @@ After adding the integration, configure settings via the configuration entities 
 1. Go to **Settings** → **Devices & Services**
 2. Find your Philips heater device
 3. Click on the device to see all entities, including configuration entities:
-   - **Update Method**: Choose between "observe" (push updates) or "polling"
-   - **Polling Interval**: Set update frequency when using polling mode (5-300 seconds)
    - **Default Heat Preset**: Choose which preset to use when switching to heat mode (low, high, auto, auto+, or fan)
    - **Auto+ Temperature Offset**: Set the temperature offset (1-10°C) above current temperature for Auto+ preset
-
-**Update Methods:**
-- **Observe mode** (default) uses CoAP observe for real-time push updates with automatic reconnection
-- **Polling mode** periodically requests status updates at the configured interval
-
 **Default Heat Preset:**
 This setting controls which preset is activated when switching to heat mode. This is particularly useful when using the heater with Matterbridge or other integrations that only support basic HVAC modes (heat/off). When these integrations switch the heater to "heat" mode, it will use your configured default preset (low, high, auto, auto+, or fan).
 
@@ -104,8 +96,6 @@ The integration provides comprehensive climate control:
 - **Target Temperature**: Configured target temperature (when applicable)
 
 ### Configuration Entities
-- **Update Method**: Select push (observe) or polling updates
-- **Polling Interval**: Adjust update frequency for polling mode
 - **Default Heat Preset**: Control preset used when switching to heat mode
 - **Auto+ Temperature Offset**: Set offset for Auto+ preset
 
@@ -120,12 +110,10 @@ The integration provides comprehensive climate control:
 
 ### Entity Not Updating
 
-By default, the integration uses CoAP's observe protocol for real-time push updates. If updates are slow or unreliable:
+The integration uses CoAP's observe protocol for real-time push updates. If updates are slow or unreliable:
 1. Check your network stability
-2. Try switching to **polling mode** in the device configuration
-3. Adjust the polling interval if using polling mode
-4. Restart the integration
-5. Check Home Assistant logs for errors
+2. Restart the integration
+3. Check Home Assistant logs for errors
 
 ### Debug Logging
 

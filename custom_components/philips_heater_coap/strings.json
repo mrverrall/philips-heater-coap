@@ -16,25 +16,8 @@
   },
   "entity": {
     "select": {
-      "update_method": {
-        "name": "Update method",
-        "state": {
-          "observe": "Observe (Push)",
-          "polling": "Polling"
-        }
-      }
-    },
-    "number": {
-      "polling_interval": {
-        "name": "Polling interval"
-      }
-    }
-  },
-  "selector": {
-    "update_method": {
-      "options": {
-        "observe": "Observe - Real-time push updates with automatic reconnection",
-        "polling": "Polling - Periodic status requests at configured interval"
+      "default_heat_preset": {
+        "name": "Default heat preset"
       }
     }
   }
