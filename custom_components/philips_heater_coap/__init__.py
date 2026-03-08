@@ -84,7 +84,7 @@ class HeaterObserveCoordinator:
         """Observe status updates from device with automatic reconnection."""
         reconnect_delay = RECONNECT_DELAY_INITIAL
         max_reconnect_delay = RECONNECT_DELAY_MAX
-        
+
         while True:
             # Ensure we have a valid client before attempting to observe
             if self.client is None:
@@ -236,11 +236,11 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    
+
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    
+
     if unload_ok:
         coordinator = hass.data[DOMAIN].pop(entry.entry_id)
         await coordinator.shutdown()
-    
+
     return unload_ok
