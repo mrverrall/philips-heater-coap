@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4] - 2026-03-13
+
+### Breaking Changes
+- **Polling mode removed.** The integration now exclusively uses CoAP observe, and the **Update Method** and **Polling Interval** configuration entities are removed on next restart.
+
+### Changed
+- **Connection lifecycle improved.** `HeaterObserveCoordinator` now fully owns client creation, cached state restoration, and observe startup through a new `async_start()` method rather than setup-time orchestration.
+- **Watchdog timeout increased substantially** from 120s to 24 hours (86400s) to avoid unnecessary reconnect churn during long quiet periods.
+- Observe task now runs for the full coordinator lifetime rather than starting/stopping with entity listener registration.
+- Polling code path removed after discovering it was fundamentally broken: `get_status()` opened its own observe connection without properly closing it, causing resource leaks and connection instability.
+- Reconnect retry delay increased from 5s initial / 5min max to 30s initial / 1h max.
+
+### Added
+- Observe update logging now differentiates between `control` (user action) and `status` (periodic heartbeat) update types — control updates are logged at INFO, heartbeat pings at DEBUG
+- Each observe update log includes a diff of only the fields that changed since the last update
+- Observe frequency statistics logged on every update: connection age, last interval, rolling average interval, and longest wait — to characterise normal device behaviour
+
 ## [1.3] - 2026-03-01
 
 ### Added
