@@ -1,8 +1,8 @@
 # Philips Heater Integration for Home Assistant
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
-[![GitHub release](https://img.shields.io/github/release/mrverrall/philips-heater-coap.svg)](https://github.com/mrverrall/philips-heater-coap/releases)
-[![License](https://img.shields.io/github/license/mrverrall/philips-heater-coap.svg)](LICENSE)
+[![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5?style=flat-square&logo=home-assistant&logoColor=white)](https://github.com/hacs/integration)
+[![Latest Release](https://img.shields.io/github/v/release/mrverrall/philips-heater-coap?style=flat-square)](https://github.com/mrverrall/philips-heater-coap/releases/latest)
+[![License](https://img.shields.io/github/license/mrverrall/philips-heater-coap?style=flat-square)](LICENSE)
 
 A Home Assistant custom component for **Philips heaters** (CX3120, CX5120) providing **local control** via the CoAP protocol. This integration communicates directly with your heater on your local network—no Philips cloud service or mobile app required. All control is completely local and works without internet access.
 
@@ -31,15 +31,13 @@ This integration focuses exclusively on Philips heaters, providing a simple and 
 
 ### HACS (Recommended)
 
+[![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mrverrall&repository=philips-heater-coap&category=integration)
+
 1. Open HACS in Home Assistant
 2. Go to "Integrations"
 3. Click the three dots in the top right corner
-4. Select "Custom repositories"
-5. Add this repository URL: `https://github.com/mrverrall/philips-heater-coap`
-6. Select category: "Integration"
-7. Click "Add"
-8. Find "Philips Heater" in HACS and install it
-9. Restart Home Assistant
+4. Find "Philips Heater" in HACS and install it
+5. Restart Home Assistant
 
 ### Manual Installation
 
@@ -108,38 +106,9 @@ The integration provides comprehensive climate control:
 3. Ensure the IP address is correct and the heater is powered on
 4. Try pinging the heater from the Home Assistant host
 
-### Entity Not Updating
-
-The integration uses CoAP's observe protocol for real-time push updates. If updates are slow or unreliable:
-1. Check your network stability
-2. Restart the integration
-3. Check Home Assistant logs for errors
-
 ### Debug Logging
 
-Enable debug logging by adding to your `configuration.yaml`:
-
-```yaml
-logger:
-  default: info
-  logs:
-    custom_components.philips_heater_coap: debug
-```
-
-## Development
-
-This integration uses:
-- **CoAP Protocol**: For local communication with Philips devices
-- **aioairctrl**: Python library for Philips air control devices
-- **Home Assistant Integration**: Climate platform
-
-## Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+Enable debug logging via the intergration page
 
 ## License
 
