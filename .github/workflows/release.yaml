@@ -1,0 +1,39 @@
+name: Build release asset
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to attach asset to (e.g. v1.4)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create release zip
+        run: |
+          mkdir -p dist/custom_components
+          cp -r custom_components/philips_heater_coap dist/custom_components/
+
+          find dist -type d -name "__pycache__" -exec rm -rf {} +
+          find dist -type f -name "*.pyc" -delete
+
+          cd dist
+          zip -r ../philips-heater-coap.zip custom_components
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: philips-heater-coap.zip
+          draft: true
+          tag_name: ${{ inputs.tag || github.ref_name }}
