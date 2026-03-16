@@ -4,23 +4,23 @@
 [![Latest Release](https://img.shields.io/github/v/release/mrverrall/philips-heater-coap?style=flat-square)](https://github.com/mrverrall/philips-heater-coap/releases/latest)
 [![License](https://img.shields.io/github/license/mrverrall/philips-heater-coap?style=flat-square)](LICENSE)
 
-A Home Assistant custom component for **Philips heaters** (CX3120, CX5120) providing **local control** via the CoAP protocol. This integration communicates directly with your heater on your local network—no Philips cloud service or mobile app required. All control is completely local and works without internet access.
+A Home Assistant custom component for **Philips heaters** (CX3120, CX5120) that uses CoAP for direct local control. It communicates with the heater on your LAN and does not require the Philips cloud service or mobile app. Internet access is not required.
 
 ## About This Project
 
-This integration focuses exclusively on Philips heaters, providing a simple and maintainable codebase. It's inspired by the [philips-airpurifier-coap](https://github.com/kongo09/philips-airpurifier-coap) project by [@kongo09](https://github.com/kongo09), which is a current active implementation for Philips CoAP devices.
+This integration focuses only on Philips heaters. It came about after debugging and patching an ocillation control issues with [philips-airpurifier-coap](https://github.com/kongo09/philips-airpurifier-coap) by [@kongo09](https://github.com/kongo09), which is an broarder implementation for Philips CoAP devices.
 
 **Credit**: Thanks to [@kongo09](https://github.com/kongo09) for the comprehensive multi-device implementation and to previous contributors in the lineage of Philips CoAP projects.
 
 ## Features
 
-- 🌡️ **Full climate entity support** - Complete Home Assistant climate platform integration with multiple HVAC modes
-- 🎯 **Advanced preset modes** - Low, High, Auto, Fan, and Auto+ with configurable temperature offset
-- 🔧 **Configurable default heat preset** - Set the default preset when switching to heat mode (useful for Matterbridge and other integrations that only support basic HVAC modes)
-- 💫 **Functional oscillation control** - Working swing mode implementation
-- 🔥 **Heating status sensors** - Real-time heating intensity, temperatures and operating mode tracking
-- ⚡ **Real-time updates via CoAP observe protocol** - Instant push updates when device state changes
-- 🔌 **Automatic reconnection** with exponential backoff for reliable operation
+- 🌡️ **Climate entity support** - Home Assistant climate integration with multiple HVAC modes
+- 🎯 **Preset modes** - Low, High, Auto, Fan, and Auto+ with configurable temperature offset
+- 🔧 **Default heat preset option** - Choose the preset used when switching to heat mode (useful for Matterbridge and other integrations that only support basic HVAC modes)
+- 💫 **Oscillation control** - Swing mode support
+- 🔥 **Heating status sensors** - Heating intensity, temperatures, and operating mode tracking
+- ⚡ **CoAP observe updates** - Push updates when device state changes
+- 🔌 **Automatic reconnection** with exponential backoff
 
 ## Supported Devices
 
@@ -31,13 +31,10 @@ This integration focuses exclusively on Philips heaters, providing a simple and 
 
 ### HACS (Recommended)
 
+Find "Philips Heater" in HACS Integrations and install it. Or use the button below to open this repository directly in HACS.
+
 [![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mrverrall&repository=philips-heater-coap&category=integration)
 
-1. Open HACS in Home Assistant
-2. Go to "Integrations"
-3. Click the three dots in the top right corner
-4. Find "Philips Heater" in HACS and install it
-5. Restart Home Assistant
 
 ### Manual Installation
 
@@ -64,11 +61,12 @@ After adding the integration, configure settings via the configuration entities 
 3. Click on the device to see all entities, including configuration entities:
    - **Default Heat Preset**: Choose which preset to use when switching to heat mode (low, high, auto, auto+, or fan)
    - **Auto+ Temperature Offset**: Set the temperature offset (1-10°C) above current temperature for Auto+ preset
+
 **Default Heat Preset:**
-This setting controls which preset is activated when switching to heat mode. This is particularly useful when using the heater with Matterbridge or other integrations that only support basic HVAC modes (heat/off). When these integrations switch the heater to "heat" mode, it will use your configured default preset (low, high, auto, auto+, or fan).
+Controls which preset is activated when switching to heat mode. This is useful with Matterbridge or other integrations that only support basic HVAC modes (heat/off). When they switch to "heat", the integration applies your configured preset (low, high, auto, auto+, or fan).
 
 **Auto+ Preset:**
-The Auto+ preset enables automatic temperature control with a configurable offset above the current room temperature. For example, with a 2°C offset and current temperature of 18°C, the heater will target 20°C in auto mode.
+Auto+ uses a configurable offset above the current room temperature. For example, with a 2°C offset and a current temperature of 18°C, the heater targets 20°C in auto mode.
 
 ## Requirements
 
@@ -78,7 +76,7 @@ The Auto+ preset enables automatic temperature control with a configurable offse
 
 ## Usage
 
-The integration provides comprehensive climate control:
+The integration provides these entities:
 
 ### Climate Entity
 - **HVAC Modes**: Off, Heat, Auto, Fan Only
@@ -108,7 +106,7 @@ The integration provides comprehensive climate control:
 
 ### Debug Logging
 
-Enable debug logging via the intergration page
+Enable debug logging via the integration page.
 
 ## License
 
@@ -117,7 +115,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Acknowledgments
 
 - **[@kongo09](https://github.com/kongo09)** - Ongoing philips-airpurifier-coap maintenance and development
-- **Previous contributors** - All previous contributions leading here
+- **Previous contributors** - Earlier work on Philips CoAP integrations
 
 ## Related Projects
 
