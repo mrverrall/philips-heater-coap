@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5] - 2026-03-16
+
+### Fixed
+- Config flow now primes observe with a one-time backlight tickle (`D03105`) and restores the original value after the first status push.
+- Prevents setup stalls and false `cannot_connect` when no state change occurs; this was often masked while the phone app was open because app activity generated updates.
+
 ## [1.4] - 2026-03-13
 
 ### Breaking Changes
