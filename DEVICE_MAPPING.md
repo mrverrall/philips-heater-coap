@@ -33,7 +33,7 @@ CoAP field mappings for Philips CX5120/11, CX3120, AMF765, AMF870 heaters.
 | Field | D-Code | Values |
 |-------|--------|--------|
 | TEMPERATURE | D03224 | Current temp (value ÷ 10) |
-| HEATING_STATUS | D0313F | 0=not heating, 65=high, 66=low, 67=medium, -16=idle |
+| HEATING_STATUS | D0313F | 0=not heating, 65=high, 66=low, 67=medium (CX3xxx only), -16=idle |
 | FAN_SPEED | D0310D | Unknown (constant at 2, function unclear) |
 
 ## Operating Modes
@@ -44,6 +44,7 @@ CoAP field mappings for Philips CX5120/11, CX3120, AMF765, AMF870 heaters.
 | OFF | Any | 0 |
 | AUTO | 0 | 1 |
 | HEAT (High) | 65 | 1 |
+| HEAT (Medium) | 67 | 1 | CX3xxx series only |
 | HEAT (Low) | 66 | 1 |
 | FAN_ONLY | -127 | 1 |
 

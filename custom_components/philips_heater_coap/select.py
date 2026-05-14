@@ -15,11 +15,13 @@ from .const import (
     CONF_DEFAULT_HEAT_PRESET,
     DEFAULT_HEAT_PRESET,
     DOMAIN,
+    MEDIUM_HEAT_EXCLUDED_PREFIXES,
     PRESET_AUTO,
     PRESET_AUTO_PLUS,
     PRESET_FAN,
     PRESET_HIGH,
     PRESET_LOW,
+    PRESET_MEDIUM,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,13 +33,13 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Philips Heater select from config entry."""
-    
+
     coordinator = hass.data[DOMAIN][entry.entry_id]
     host = entry.data[CONF_HOST]
     name = entry.data.get("name", f"Philips Heater {host}")
     model = entry.data.get("model", "Unknown")
     device_id = entry.data.get("device_id", entry.entry_id)
-    
+
     async_add_entities([
         DefaultHeatPresetSelect(coordinator, entry, host, name, model, device_id),
     ])
@@ -50,8 +52,7 @@ class DefaultHeatPresetSelect(SelectEntity):
     _attr_name = "Default heat preset"
     _attr_icon = "mdi:fire"
     _attr_entity_category = EntityCategory.CONFIG
-    _attr_options = [PRESET_LOW, PRESET_HIGH, PRESET_AUTO, PRESET_AUTO_PLUS, PRESET_FAN]
-    
+
     entity_description = EntityDescription(
         key="default_heat_preset",
         name="Default heat preset",
@@ -72,12 +73,16 @@ class DefaultHeatPresetSelect(SelectEntity):
         self._entry = entry
         self._host = host
         self._attr_unique_id = f"{device_id}_default_heat_preset"
-        
+
+        self._attr_options = [PRESET_LOW, PRESET_MEDIUM, PRESET_HIGH, PRESET_AUTO, PRESET_AUTO_PLUS, PRESET_FAN]
+        if any(model.startswith(p) for p in MEDIUM_HEAT_EXCLUDED_PREFIXES):
+            self._attr_options.remove(PRESET_MEDIUM)
+
         # Get device status for software version
         status = coordinator.status
         from .const import PhilipsApi
         sw_version = status.get(PhilipsApi.SOFTWARE_VERSION)
-        
+
         # Device info
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, device_id)},
