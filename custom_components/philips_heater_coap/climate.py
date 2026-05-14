@@ -27,6 +27,7 @@ from .const import (
     DOMAIN,
     HEATING_ACTION_MAP,
     MAX_TEMP,
+    MEDIUM_HEAT_EXCLUDED_PREFIXES,
     MIN_TEMP,
     OSCILLATION_OFF,
     OSCILLATION_ON,
@@ -37,6 +38,7 @@ from .const import (
     PRESET_FAN,
     PRESET_HIGH,
     PRESET_LOW,
+    PRESET_MEDIUM,
     PRESET_MODES,
     TARGET_TEMP_STEP,
 )
@@ -50,13 +52,13 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Philips Heater climate from config entry."""
-    
+
     coordinator = hass.data[DOMAIN][entry.entry_id]
     host = entry.data[CONF_HOST]
     name = entry.data.get("name", f"Philips Heater {host}")
     model = entry.data.get("model", "Unknown")
     device_id = entry.data.get("device_id", entry.entry_id)
-    
+
     async_add_entities([PhilipsHeaterClimate(coordinator, entry, host, name, model, device_id)])
 
 
@@ -65,7 +67,6 @@ class PhilipsHeaterClimate(ClimateEntity):
 
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT, HVACMode.AUTO, HVACMode.FAN_ONLY]
-    _attr_preset_modes = [*PRESET_MODES.keys(), PRESET_AUTO_PLUS]
     _attr_target_temperature_step = TARGET_TEMP_STEP
     _attr_min_temp = MIN_TEMP
     _attr_max_temp = MAX_TEMP
@@ -89,10 +90,14 @@ class PhilipsHeaterClimate(ClimateEntity):
         self._device_id = device_id
         self._attr_unique_id = f"{device_id}_climate"
         self._remove_listener = None
-        
+
+        self._attr_preset_modes = [PRESET_LOW, PRESET_MEDIUM, PRESET_HIGH, PRESET_AUTO, PRESET_FAN, PRESET_AUTO_PLUS]
+        if any(model.startswith(p) for p in MEDIUM_HEAT_EXCLUDED_PREFIXES):
+            self._attr_preset_modes.remove(PRESET_MEDIUM)
+
         # Get device status for version info
         status = coordinator.status
-        
+
         # Device info for device registry
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, device_id)},
@@ -130,11 +135,11 @@ class PhilipsHeaterClimate(ClimateEntity):
             "operating_mode": status.get(PhilipsApi.OPERATING_MODE, 0),
             "heating_status_code": status.get(PhilipsApi.HEATING_STATUS, 0),
         }
-        
+
         # Add fan speed if available
         if (fan_speed := status.get(PhilipsApi.FAN_SPEED)) is not None:
             attrs["fan_speed"] = fan_speed
-            
+
         return attrs
 
     @property
@@ -151,7 +156,7 @@ class PhilipsHeaterClimate(ClimateEntity):
         """Return the target temperature - only applicable in AUTO mode."""
         if self.hvac_mode != HVACMode.AUTO:
             return None
-        
+
         status = self._coordinator.status
         return status.get(PhilipsApi.TARGET_TEMP)
 
@@ -160,11 +165,11 @@ class PhilipsHeaterClimate(ClimateEntity):
         """Return current HVAC mode."""
         if not self.is_on:
             return HVACMode.OFF
-        
+
         status = self._coordinator.status
         operating_mode = status.get(PhilipsApi.OPERATING_MODE, 0)
         heating_status = status.get(PhilipsApi.HEATING_STATUS, 0)
-        
+
         # Determine mode from OPERATING_MODE and HEATING_STATUS
         # If heating_status is -16 (auto idle) or operating_mode is 0, we're in AUTO
         if operating_mode == 0 or heating_status == -16:
@@ -181,7 +186,7 @@ class PhilipsHeaterClimate(ClimateEntity):
         """Return current HVAC action."""
         if not self.is_on:
             return HVACAction.OFF
-        
+
         status = self._coordinator.status
         intensity = status.get(PhilipsApi.HEATING_STATUS, 0)
         return HEATING_ACTION_MAP.get(intensity, HVACAction.IDLE)
@@ -191,10 +196,10 @@ class PhilipsHeaterClimate(ClimateEntity):
         """Return current preset mode."""
         if not self.is_on:
             return None
-        
+
         status = self._coordinator.status
         mode = status.get(PhilipsApi.OPERATING_MODE, 66)
-        
+
         # Map OPERATING_MODE to preset
         if mode == 0:
             return PRESET_AUTO
@@ -202,6 +207,8 @@ class PhilipsHeaterClimate(ClimateEntity):
             return PRESET_HIGH
         elif mode == 66:
             return PRESET_LOW
+        elif mode == 67:
+            return PRESET_MEDIUM
         elif mode == -127:
             return PRESET_FAN
         return None
@@ -223,10 +230,10 @@ class PhilipsHeaterClimate(ClimateEntity):
         """Set new target temperature."""
         if (temp := kwargs.get(ATTR_TEMPERATURE)) is None:
             return
-        
+
         temp = int(temp)
         temp = max(self._attr_min_temp, min(temp, self._attr_max_temp))
-        
+
         await self._coordinator.client.set_control_values({PhilipsApi.TARGET_TEMP: temp})
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
@@ -265,7 +272,7 @@ class PhilipsHeaterClimate(ClimateEntity):
             await self._coordinator.client.set_control_values(PRESET_MODES[preset_mode])
         else:
             return
-        
+
         await self.async_turn_on()
 
     async def async_set_swing_mode(self, swing_mode: str) -> None:

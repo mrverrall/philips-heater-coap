@@ -14,7 +14,7 @@ SUPPORTED_MODELS = {
 # Philips CoAP API keys
 class PhilipsApi:
     """CoAP API field names for Philips heaters."""
-    
+
     # Device information
     NAME = "D01S03"
     TYPE = "D01S04"
@@ -23,7 +23,7 @@ class PhilipsApi:
     DEVICE_ID = "DeviceId"
     PRODUCT_ID = "ProductId"
     WIFI_VERSION = "WifiVersion"
-    
+
     # Control
     POWER = "D03102"
     OPERATING_MODE = "D0310C"  # Primary mode control (0=auto, 65=high, 66=low, -127=vent)
@@ -33,7 +33,7 @@ class PhilipsApi:
     OSCILLATION = "D0320F"
     TIMER = "D03180"
     TIMER2 = "D03182"
-    
+
     # Sensors
     TEMPERATURE = "D03224"      # Current temperature
     FAN_SPEED = "D0310D"        # Unknown function (constant at 2)
@@ -53,15 +53,16 @@ HEATING_ACTION_MAP = {
 HEATING_INTENSITY_MAP = {
     -16: "Not Heating",    # Auto+ reached target, idle
     0: "Not Heating",      # Fan only
-    65: "High", 
+    65: "High",
     66: "Low",
     67: "Medium",  # Medium heating
 }
 
 OPERATING_MODE_MAP = {
-    0: "Auto", 
+    0: "Auto",
     65: "High",
     66: "Low",
+    67: "Medium",
     -127: "Fan",
 }
 
@@ -70,13 +71,19 @@ HEATING_MODE_VALUES = ["Off", "Auto", "High", "Low", "Fan"]
 
 # Preset modes - can be used across different HVAC modes
 PRESET_LOW = "low"
+PRESET_MEDIUM = "medium"
 PRESET_HIGH = "high"
 PRESET_AUTO = "auto"
 PRESET_FAN = "fan"
 PRESET_AUTO_PLUS = "auto_plus"
 
+# Models whose OPERATING_MODE does not support value 67 (medium heat).
+# Any model NOT starting with one of these prefixes gets medium heat by default.
+MEDIUM_HEAT_EXCLUDED_PREFIXES = {"CX5"}
+
 PRESET_MODES = {
     PRESET_LOW: {PhilipsApi.OPERATING_MODE: 66},
+    PRESET_MEDIUM: {PhilipsApi.OPERATING_MODE: 67},
     PRESET_HIGH: {PhilipsApi.OPERATING_MODE: 65},
     PRESET_AUTO: {PhilipsApi.OPERATING_MODE: 0},
     PRESET_FAN: {PhilipsApi.OPERATING_MODE: -127},
