@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6] - 2026-05-18
+
+### Added
+- **Medium heat preset** for CX3000-series heaters (operating mode `67`). Medium is automatically hidden for CX5000-series models which don't support it.
+
+### Changed
+- Releases now distributed as a zip asset so HACS installs from the release rather than cloning the repo directly.
+
 ## [1.5] - 2026-03-16
 
 ### Fixed
