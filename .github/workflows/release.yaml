@@ -22,14 +22,14 @@ jobs:
 
       - name: Create release zip
         run: |
-          mkdir -p dist/custom_components
-          cp -r custom_components/philips_heater_coap dist/custom_components/
+          mkdir -p dist/philips_heater_coap
+          cp -r custom_components/philips_heater_coap/. dist/philips_heater_coap/
 
           find dist -type d -name "__pycache__" -exec rm -rf {} +
           find dist -type f -name "*.pyc" -delete
 
           cd dist
-          zip -r ../philips-heater-coap.zip custom_components
+          zip -r ../philips-heater-coap.zip philips_heater_coap
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
