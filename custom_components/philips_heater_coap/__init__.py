@@ -28,6 +28,23 @@ RECONNECT_DELAY_INITIAL = 30  # seconds before first reconnect attempt
 RECONNECT_DELAY_MAX = 3600  # max seconds between reconnect attempts (1 hour)
 
 
+async def _create_coap_client(host: str) -> CoAPClient:
+    """Create a CoAP client restricted to UDP transport.
+
+    aiocoap's default transport list includes tlsclient, which calls
+    ssl.create_default_context() and triggers a blocking filesystem scan on
+    Python 3.14+. All Philips CoAP traffic is coap:// (plain UDP), so TLS
+    and TCP transports are never used and can be safely skipped.
+    """
+    from aiocoap import defaults as _aiocoap_defaults
+    _orig = _aiocoap_defaults.get_default_clienttransports
+    _aiocoap_defaults.get_default_clienttransports = lambda *a, **kw: iter(["udp6"])
+    try:
+        return await CoAPClient.create(host)
+    finally:
+        _aiocoap_defaults.get_default_clienttransports = _orig
+
+
 class HeaterObserveCoordinator:
     """Coordinator for Philips Heater using CoAP observe (push updates)."""
 
@@ -51,8 +68,8 @@ class HeaterObserveCoordinator:
         self.status = await self._store.async_load() or {}
         try:
             self.client = await asyncio.wait_for(
-                CoAPClient.create(self.host), timeout=15
-            )
+                    _create_coap_client(self.host), timeout=15
+                )
         except Exception as err:
             raise ConfigEntryNotReady(f"Cannot connect to {self.host}") from err
         self._connected_at = time.monotonic()
@@ -91,7 +108,7 @@ class HeaterObserveCoordinator:
                 try:
                     _LOGGER.info("Connecting to %s", self.host)
                     self.client = await asyncio.wait_for(
-                        CoAPClient.create(self.host), timeout=30
+                        _create_coap_client(self.host), timeout=30
                     )
                     _LOGGER.info("Connected to %s", self.host)
                     self._connected_at = time.monotonic()
