@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7] - 2026-08-03
+
+### Added
+- **Model-specific config system**: `BASE_MODEL_CONFIG` defines defaults; `MODEL_CONFIGS` maps series prefixes (e.g. `CX3`, `CX5`) to sparse overrides merged at startup via `get_model_config()`. Adding support for a new model variant requires only a new entry in `MODEL_CONFIGS`.
+- **CX3 oscillation fix**: CX3-series heaters (e.g. CX3120) now send the correct oscillation command value (`45` on/off) instead of the CX5 value (`17222`), which was silently ignored by the device.
+- **Blocking I/O warning fixed**: CoAP client creation is now restricted to UDP transport, preventing aiocoap's TLS transport from calling `ssl.create_default_context()` (and triggering a blocking filesystem scan) on startup.
+- **Reliable model detection**: Integration now fetches a full device state snapshot synchronously during startup (before the background observe task begins), ensuring `MODEL_ID` is available for config resolution even on first install.
+- **Model persisted to config entry**: Once resolved from live status, the model ID is written back to `entry.data` so future restarts can resolve the correct config without waiting for the device.
+
 ## [1.6] - 2026-05-18
 
 ### Added
