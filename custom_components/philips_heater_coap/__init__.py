@@ -16,7 +16,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.storage import Store
 import homeassistant.helpers.entity_registry as er
 
-from .const import DOMAIN, PhilipsApi
+from .const import DOMAIN, PhilipsApi, get_model_config
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -62,6 +62,7 @@ class HeaterObserveCoordinator:
         self._last_update_at: float | None = None
         self._longest_wait: float = 0.0
         self._update_intervals: list[float] = []
+        self.model_config: dict = {}
 
     async def async_start(self) -> None:
         """Load cached state, create CoAP client, and start observing."""
@@ -72,6 +73,18 @@ class HeaterObserveCoordinator:
                 )
         except Exception as err:
             raise ConfigEntryNotReady(f"Cannot connect to {self.host}") from err
+
+        # Pull the first observe response synchronously — full device state snapshot
+        # (includes MODEL_ID/D01S05); subsequent heartbeats are delta-only.
+        try:
+            _initial_gen = self.client.observe_status()
+            initial_status = await asyncio.wait_for(_initial_gen.__anext__(), timeout=10)
+            await _initial_gen.aclose()
+            self.status.update(initial_status)
+            await self._store.async_save(self.status)
+        except Exception as err:
+            _LOGGER.debug("Could not get initial status, using cache: %s", err)
+
         self._connected_at = time.monotonic()
         self._task = asyncio.create_task(self._async_observe_status())
 
@@ -227,6 +240,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Coordinator owns all connection logic; raises ConfigEntryNotReady if unreachable
     await coordinator.async_start()
+
+    # Prefer MODEL_ID from the cached live status — the config-flow tickle may produce a
+    # "control"-type response that omits device-info fields, storing "Unknown" in entry.data.
+    model_id = coordinator.status.get(PhilipsApi.MODEL_ID) or entry.data.get("model", "")
+    coordinator.model_config = get_model_config(model_id)
+
+    # Persist the resolved model so future restarts don't need the device to re-provide it.
+    if model_id and model_id != entry.data.get("model"):
+        hass.config_entries.async_update_entry(entry, data={**entry.data, "model": model_id})
 
     # Remove entities that no longer exist (polling was removed in 1.4)
     device_id = entry.data.get("device_id", entry.entry_id)

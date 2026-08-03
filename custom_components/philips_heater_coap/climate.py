@@ -27,11 +27,7 @@ from .const import (
     DOMAIN,
     HEATING_ACTION_MAP,
     MAX_TEMP,
-    MEDIUM_HEAT_EXCLUDED_PREFIXES,
     MIN_TEMP,
-    OSCILLATION_OFF,
-    OSCILLATION_ON,
-    OSCILLATION_STATUS,
     PhilipsApi,
     PRESET_AUTO,
     PRESET_AUTO_PLUS,
@@ -56,7 +52,7 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][entry.entry_id]
     host = entry.data[CONF_HOST]
     name = entry.data.get("name", f"Philips Heater {host}")
-    model = entry.data.get("model", "Unknown")
+    model = coordinator.status.get(PhilipsApi.MODEL_ID) or entry.data.get("model", "Unknown")
     device_id = entry.data.get("device_id", entry.entry_id)
 
     async_add_entities([PhilipsHeaterClimate(coordinator, entry, host, name, model, device_id)])
@@ -91,8 +87,9 @@ class PhilipsHeaterClimate(ClimateEntity):
         self._attr_unique_id = f"{device_id}_climate"
         self._remove_listener = None
 
+        self._model_config = coordinator.model_config
         self._attr_preset_modes = [PRESET_LOW, PRESET_MEDIUM, PRESET_HIGH, PRESET_AUTO, PRESET_FAN, PRESET_AUTO_PLUS]
-        if any(model.startswith(p) for p in MEDIUM_HEAT_EXCLUDED_PREFIXES):
+        if not self._model_config["supports_medium_heat"]:
             self._attr_preset_modes.remove(PRESET_MEDIUM)
 
         # Get device status for version info
@@ -218,7 +215,7 @@ class PhilipsHeaterClimate(ClimateEntity):
         """Return swing mode."""
         status = self._coordinator.status
         osc = status.get(PhilipsApi.OSCILLATION, 0)
-        return SWING_ON if osc in (OSCILLATION_ON, OSCILLATION_STATUS) else SWING_OFF
+        return SWING_ON if osc in (self._model_config["oscillation_on"], self._model_config["oscillation_status"]) else SWING_OFF
 
     @property
     def is_on(self) -> bool:
@@ -277,7 +274,7 @@ class PhilipsHeaterClimate(ClimateEntity):
 
     async def async_set_swing_mode(self, swing_mode: str) -> None:
         """Set swing mode."""
-        value = OSCILLATION_ON if swing_mode == SWING_ON else OSCILLATION_OFF
+        value = self._model_config["oscillation_on"] if swing_mode == SWING_ON else self._model_config["oscillation_off"]
         await self._coordinator.client.set_control_values({PhilipsApi.OSCILLATION: value})
 
     async def async_turn_on(self, **kwargs: Any) -> None:

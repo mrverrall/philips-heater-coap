@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo, EntityDescription
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_AUTO_PLUS_OFFSET, DEFAULT_AUTO_PLUS_OFFSET, DOMAIN
+from .const import CONF_AUTO_PLUS_OFFSET, DEFAULT_AUTO_PLUS_OFFSET, DOMAIN, PhilipsApi
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,13 +22,13 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Philips Heater number from config entry."""
-    
+
     coordinator = hass.data[DOMAIN][entry.entry_id]
     host = entry.data[CONF_HOST]
     name = entry.data.get("name", f"Philips Heater {host}")
-    model = entry.data.get("model", "Unknown")
+    model = coordinator.status.get(PhilipsApi.MODEL_ID) or entry.data.get("model", "Unknown")
     device_id = entry.data.get("device_id", entry.entry_id)
-    
+
     async_add_entities([
         AutoPlusOffsetNumber(coordinator, entry, host, name, model, device_id),
     ])
@@ -46,7 +46,7 @@ class AutoPlusOffsetNumber(NumberEntity):
     _attr_native_min_value = 1
     _attr_native_max_value = 10
     _attr_native_step = 1
-    
+
     entity_description = EntityDescription(
         key="auto_plus_offset",
         name="Auto+ temperature offset",
@@ -67,12 +67,11 @@ class AutoPlusOffsetNumber(NumberEntity):
         self._entry = entry
         self._host = host
         self._attr_unique_id = f"{device_id}_auto_plus_offset"
-        
+
         # Get device status for software version
         status = coordinator.status
-        from .const import PhilipsApi
         sw_version = status.get(PhilipsApi.SOFTWARE_VERSION)
-        
+
         # Device info
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, device_id)},

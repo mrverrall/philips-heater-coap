@@ -1,6 +1,10 @@
 """Constants for Philips Heater integration."""
 
+import logging
+
 from homeassistant.components.climate import HVACAction
+
+_LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "philips_heater_coap"
 MANUFACTURER = "Philips"
@@ -67,7 +71,7 @@ OPERATING_MODE_MAP = {
 }
 
 # Valid heating mode values (includes Off for when power is 0)
-HEATING_MODE_VALUES = ["Off", "Auto", "High", "Low", "Fan"]
+HEATING_MODE_VALUES = ["Off", "Auto", "High", "Medium", "Low", "Fan"]
 
 # Preset modes - can be used across different HVAC modes
 PRESET_LOW = "low"
@@ -76,10 +80,6 @@ PRESET_HIGH = "high"
 PRESET_AUTO = "auto"
 PRESET_FAN = "fan"
 PRESET_AUTO_PLUS = "auto_plus"
-
-# Models whose OPERATING_MODE does not support value 67 (medium heat).
-# Any model NOT starting with one of these prefixes gets medium heat by default.
-MEDIUM_HEAT_EXCLUDED_PREFIXES = {"CX5"}
 
 PRESET_MODES = {
     PRESET_LOW: {PhilipsApi.OPERATING_MODE: 66},
@@ -104,6 +104,42 @@ MAX_TEMP = 37
 TARGET_TEMP_STEP = 1
 
 # Oscillation
-OSCILLATION_ON = 17222   # Command value to turn on
-OSCILLATION_STATUS = 17920  # Status value when running
-OSCILLATION_OFF = 0
+BASE_MODEL_CONFIG = {
+    "oscillation_on": 17222,
+    "oscillation_status": 17920,
+    "oscillation_off": 0,
+    "supports_medium_heat": False,
+    "supports_display_backlight": True,
+}
+
+# Per-prefix overrides merged onto BASE_MODEL_CONFIG by get_model_config().
+# CX5 is stated in full even though it mirrors the base — unknown models fall back to base defaults.
+MODEL_CONFIGS: dict[str, dict] = {
+    "CX5": {
+        "oscillation_on": 17222,
+        "oscillation_status": 17920,
+        "oscillation_off": 0,
+        "supports_medium_heat": False,
+        "supports_display_backlight": True,
+    },
+    "CX3": {
+        "oscillation_on": 45,
+        "oscillation_status": 45,
+        "supports_medium_heat": True,
+        "supports_display_backlight": False,
+    },
+}
+
+def get_model_config(model_id: str) -> dict:
+    """Return merged model config for the given model ID, falling back to base defaults."""
+    upper = model_id.upper()
+    for prefix, overrides in MODEL_CONFIGS.items():
+        if upper.startswith(prefix):
+            config = {**BASE_MODEL_CONFIG, **overrides}
+            _LOGGER.debug("Model %r matched prefix %r → oscillation_on=%s supports_medium_heat=%s", model_id, prefix, config["oscillation_on"], config["supports_medium_heat"])
+            return config
+    _LOGGER.warning(
+        "Model %r not matched in MODEL_CONFIGS (checked prefixes: %s); using 5k base defaults — oscillation_on=%s",
+        model_id, list(MODEL_CONFIGS.keys()), BASE_MODEL_CONFIG["oscillation_on"],
+    )
+    return dict(BASE_MODEL_CONFIG)

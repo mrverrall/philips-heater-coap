@@ -26,20 +26,20 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Philips Heater sensors from config entry."""
-    
+
     coordinator = hass.data[DOMAIN][entry.entry_id]
     host = entry.data[CONF_HOST]
     name = entry.data.get("name", f"Philips Heater {host}")
-    model = entry.data.get("model", "Unknown")
+    model = coordinator.status.get(PhilipsApi.MODEL_ID) or entry.data.get("model", "Unknown")
     device_id = entry.data.get("device_id", entry.entry_id)
-    
+
     sensors = [
         PhilipsHeaterTemperatureSensor(coordinator, entry, host, name, model, device_id),
         PhilipsHeaterIntensitySensor(coordinator, entry, host, name, model, device_id),
         PhilipsHeaterHeatingModeSensor(coordinator, entry, host, name, model, device_id),
         PhilipsHeaterTargetTemperatureSensor(coordinator, entry, host, name, model, device_id),
     ]
-    
+
     async_add_entities(sensors)
 
 
@@ -63,10 +63,10 @@ class PhilipsHeaterSensorBase(SensorEntity):
         self._model = model
         self._device_id = device_id
         self._remove_listener = None
-        
+
         # Get device status for version info
         status = coordinator.status
-        
+
         # Device info for device registry
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, device_id)},
@@ -191,7 +191,7 @@ class PhilipsHeaterHeatingModeSensor(PhilipsHeaterSensorBase):
             power = status.get(PhilipsApi.POWER)
             if power == 0:
                 return "Off"
-            
+
             operating_mode = status.get(PhilipsApi.OPERATING_MODE)
             if operating_mode is not None:
                 return OPERATING_MODE_MAP.get(operating_mode, "Unknown")
@@ -229,7 +229,7 @@ class PhilipsHeaterTargetTemperatureSensor(PhilipsHeaterSensorBase):
             power = status.get(PhilipsApi.POWER)
             if power == 0:
                 return None
-            
+
             target_temp = status.get(PhilipsApi.TARGET_TEMP)
             if target_temp is not None:
                 return target_temp

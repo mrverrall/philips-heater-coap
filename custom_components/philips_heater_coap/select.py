@@ -15,7 +15,7 @@ from .const import (
     CONF_DEFAULT_HEAT_PRESET,
     DEFAULT_HEAT_PRESET,
     DOMAIN,
-    MEDIUM_HEAT_EXCLUDED_PREFIXES,
+    PhilipsApi,
     PRESET_AUTO,
     PRESET_AUTO_PLUS,
     PRESET_FAN,
@@ -37,7 +37,7 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][entry.entry_id]
     host = entry.data[CONF_HOST]
     name = entry.data.get("name", f"Philips Heater {host}")
-    model = entry.data.get("model", "Unknown")
+    model = coordinator.status.get(PhilipsApi.MODEL_ID) or entry.data.get("model", "Unknown")
     device_id = entry.data.get("device_id", entry.entry_id)
 
     async_add_entities([
@@ -75,12 +75,11 @@ class DefaultHeatPresetSelect(SelectEntity):
         self._attr_unique_id = f"{device_id}_default_heat_preset"
 
         self._attr_options = [PRESET_LOW, PRESET_MEDIUM, PRESET_HIGH, PRESET_AUTO, PRESET_AUTO_PLUS, PRESET_FAN]
-        if any(model.startswith(p) for p in MEDIUM_HEAT_EXCLUDED_PREFIXES):
+        if not coordinator.model_config["supports_medium_heat"]:
             self._attr_options.remove(PRESET_MEDIUM)
 
         # Get device status for software version
         status = coordinator.status
-        from .const import PhilipsApi
         sw_version = status.get(PhilipsApi.SOFTWARE_VERSION)
 
         # Device info
