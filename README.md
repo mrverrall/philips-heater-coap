@@ -19,13 +19,13 @@ This is a hobby project maintained in spare time grown to support others. I've e
 
 ## Features
 
-- 📡 **Automatic device discovery** - Finds and tracks Philips heaters on your network automatically
-- 🌡️ **Climate entity support** - Home Assistant climate integration with multiple HVAC modes
-- 🎯 **Preset modes** - Low, High, Auto, Fan, and Auto+ with configurable temperature offset
-- 🔧 **Default heat preset option** - Choose the preset used when switching to heat mode (useful for Matterbridge and other integrations that only support basic HVAC modes)
-- 💫 **Oscillation control** - Swing mode support
-- 🔥 **Heating status sensors** - Heating intensity, temperatures, and operating mode tracking
-- ⚡ **CoAP observe updates** - Push updates when device state changes
+- 📡 **Automatic device discovery**: finds and tracks Philips heaters on your network automatically
+- 🌡️ **Climate entity support**: Home Assistant climate integration with multiple HVAC modes
+- 🎯 **Preset modes**: Low, High, Auto, Fan, and Auto+ with configurable temperature offset
+- 🔧 **Default heat preset option**: choose the preset used when switching to heat mode (useful for Matterbridge and other integrations that only support basic HVAC modes)
+- 💫 **Oscillation control**: swing mode support
+- 🔥 **Heating status sensors**: heating intensity, temperatures, and operating mode tracking
+- ⚡ **CoAP observe updates**: push updates when device state changes
 - 🔌 **Automatic reconnection** with exponential backoff
 
 ## Supported Devices
@@ -50,44 +50,18 @@ Find "Philips Heater" in HACS Integrations and install it. Or use the button bel
 
 ## Configuration
 
-1. Go to **Settings** → **Devices & Services**
-2. Click **Add Integration**
-3. Search for "Philips Heater"
-4. Enter your heater's **IP address or MAC address** (see Device Discovery below)
-5. Click Submit
+### Adding your heater
 
-The integration will automatically discover and configure your heater.
+If Home Assistant detects your heater on the network, you'll get a notification to add it. Just confirm and you're done. The integration watches for Philips heaters broadcasting on your network and probes any match to confirm it's genuine.
 
-## Device Discovery
+If it doesn't appear automatically, go to **Settings** → **Devices & Services** → **Add Integration**, search for "Philips Heater", and enter either the heater's IP address or its MAC address (shown in the Philips app). IP changes are tracked automatically, so you don't need a static IP.
 
-Finding the right IP for a Philips heater is annoying, the Philips app only shows you the MAC address, leaving you to dig through your router's DHCP table and hope the address doesn't change later.
+### Device settings
 
-This integration handles that in a few ways:
+Once added, you can configure the heater via the entities on its device page in **Settings** → **Devices & Services**:
 
-**Adding a device by MAC address**
-If you know your heater's MAC (from the Philips app or your router), you can enter it directly in the setup form instead of an IP. The integration looks up the current IP from the ARP cache and connects from there.
-
-**Automatic discovery**
-Philips heaters broadcast on the network using the `mxchip` hostname (the Wi-Fi module they use internally). Home Assistant watches for DHCP activity matching that hostname and probes new devices via CoAP to confirm they're actually Philips heaters. If confirmed, you'll get a notification to add the device, no IP hunting required.
-
-**Tracking IP changes**
-Once a device is added, Home Assistant continues watching for DHCP broadcasts from the same hostname or MAC prefix. If the heater gets a new IP from your router, the stored address is updated in the background automatically — no user action needed.
-
-### Device Configuration
-
-After adding the integration, configure settings via the configuration entities on the device page:
-
-1. Go to **Settings** → **Devices & Services**
-2. Find your Philips heater device
-3. Click on the device to see all entities, including configuration entities:
-   - **Default Heat Preset**: Choose which preset to use when switching to heat mode (low, high, auto, auto+, or fan)
-   - **Auto+ Temperature Offset**: Set the temperature offset (1-10°C) above current temperature for Auto+ preset
-
-**Default Heat Preset:**
-Controls which preset is activated when switching to heat mode. This is useful with Matterbridge or other integrations that only support basic HVAC modes (heat/off). When they switch to "heat", the integration applies your configured preset (low, high, auto, auto+, or fan).
-
-**Auto+ Preset:**
-Auto+ uses a configurable offset above the current room temperature. For example, with a 2°C offset and a current temperature of 18°C, the heater targets 20°C in auto mode.
+- **Default Heat Preset**: which preset to apply when switching to heat mode (useful for Matterbridge and other integrations that only send heat/off). Options: low, high, auto, auto+, fan.
+- **Auto+ Temperature Offset**: how many degrees (1-10°C) above the current room temperature to target in Auto+ mode. For example, a 2°C offset at 18°C targets 20°C.
 
 ## Requirements
 
@@ -137,13 +111,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- **[@kongo09](https://github.com/kongo09)** - Ongoing philips-airpurifier-coap maintenance and development
-- **Previous contributors** - Earlier work on Philips CoAP integrations
+- **[@kongo09](https://github.com/kongo09)**: ongoing philips-airpurifier-coap maintenance and development
+- **Previous contributors**: earlier work on Philips CoAP integrations
 
 ## Related Projects
 
-- [philips-airpurifier-coap](https://github.com/kongo09/philips-airpurifier-coap) - The full-featured integration supporting air purifiers, humidifiers, and heaters
-- [aioairctrl](https://github.com/kongo09/aioairctrl) - Python library for Philips air control devices
+- [philips-airpurifier-coap](https://github.com/kongo09/philips-airpurifier-coap): the full-featured integration supporting air purifiers, humidifiers, and heaters
+- [aioairctrl](https://github.com/kongo09/aioairctrl): Python library for Philips air control devices
 
 ---
 
