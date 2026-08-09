@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8] - 2026-08-09
+
+### Added
+- **Automatic DHCP discovery**: Home Assistant now detects Philips heaters on the network automatically using the MXChip hostname broadcast and seven known MAC OUI prefixes. A notification appears when a new device is found; no IP hunting required.
+- **MAC address entry**: The setup form accepts either an IP or a MAC address. Entering a MAC resolves the current IP from the ARP cache, useful when you know the MAC from the Philips app or your router before the device is added.
+- **Automatic IP tracking**: DHCP broadcasts are monitored continuously; if the heater gets a new IP the stored address is updated in the background without any user action.
+- **IP Address and MAC Address diagnostic sensors**: Both values are now visible on the device card under the diagnostics section.
+
+### Changed
+- Device discovery no longer registers the MAC address in the device registry, avoiding conflicts with network scanning integrations such as `nmap_tracker`. IP tracking is handled entirely by the DHCP manifest matchers.
+
 ## [1.7] - 2026-08-03
 
 ### Added
