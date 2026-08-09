@@ -38,6 +38,8 @@ async def async_setup_entry(
         PhilipsHeaterIntensitySensor(coordinator, entry, host, name, model, device_id),
         PhilipsHeaterHeatingModeSensor(coordinator, entry, host, name, model, device_id),
         PhilipsHeaterTargetTemperatureSensor(coordinator, entry, host, name, model, device_id),
+        PhilipsHeaterIPSensor(entry, name, model, device_id, host),
+        PhilipsHeaterMACSensor(entry, name, model, device_id, host),
     ]
 
     async_add_entities(sensors)
@@ -234,3 +236,44 @@ class PhilipsHeaterTargetTemperatureSensor(PhilipsHeaterSensorBase):
             if target_temp is not None:
                 return target_temp
         return None
+
+
+class PhilipsHeaterNetworkSensor(SensorEntity):
+    """Base for static network diagnostic sensors."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_should_poll = False
+
+    def __init__(self, entry: ConfigEntry, device_name: str, model: str, device_id: str, host: str) -> None:
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, device_id)},
+            name=device_name,
+            manufacturer="Philips",
+            model=model,
+            configuration_url=f"http://{host}",
+        )
+
+
+class PhilipsHeaterIPSensor(PhilipsHeaterNetworkSensor):
+    """Diagnostic sensor showing the device IP address."""
+
+    _attr_name = "IP Address"
+    _attr_icon = "mdi:ip-network"
+
+    def __init__(self, entry: ConfigEntry, device_name: str, model: str, device_id: str, host: str) -> None:
+        super().__init__(entry, device_name, model, device_id, host)
+        self._attr_unique_id = f"{device_id}_ip_address"
+        self._attr_native_value = host
+
+
+class PhilipsHeaterMACSensor(PhilipsHeaterNetworkSensor):
+    """Diagnostic sensor showing the device MAC address."""
+
+    _attr_name = "MAC Address"
+    _attr_icon = "mdi:ethernet"
+
+    def __init__(self, entry: ConfigEntry, device_name: str, model: str, device_id: str, host: str) -> None:
+        super().__init__(entry, device_name, model, device_id, host)
+        self._attr_unique_id = f"{device_id}_mac_address"
+        self._attr_native_value = entry.data.get("mac")

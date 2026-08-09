@@ -9,6 +9,17 @@ _LOGGER = logging.getLogger(__name__)
 DOMAIN = "philips_heater_coap"
 MANUFACTURER = "Philips"
 
+# Known OUI prefixes for the MXChip AZ3166 Wi-Fi module used in these heaters
+MXCHIP_OUI_PREFIXES = (
+    "04:78:63",
+    "68:79:C4",
+    "80:A0:36",
+    "84:9D:C2",
+    "88:A6:8D",
+    "B0:F8:93",
+    "D0:BA:E4",
+)
+
 # Supported models
 SUPPORTED_MODELS = {
     "CX3120": "Philips CX3120 Heater",

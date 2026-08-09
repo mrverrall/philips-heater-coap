@@ -3,18 +3,24 @@
     "step": {
       "user": {
         "title": "Add Philips Heater",
-        "description": "Enter the IP address of your Philips heater. Connection can take up to 60 seconds. If it fails, the device may be slow to respond - please try again.",
+        "description": "Enter the IP or MAC address of your Philips heater. Connection can take up to 60 seconds.",
         "data": {
-          "host": "IP Address"
+          "host": "IP or MAC Address"
         }
+      },
+      "discovery_confirm": {
+        "title": "Add {name}?",
+        "description": "A Philips heater has been found on your network.\n\n**Model:** {model}\n**Address:** {ip}\n\nConfirm to add it to Home Assistant."
       }
     },
     "error": {
-      "cannot_connect": "Connection timed out. The device may be slow to respond or unavailable. Please verify the IP address and try again.",
+      "cannot_connect": "Connection timed out. The device may be slow to respond or unavailable. Please verify the address and try again.",
+      "mac_not_found": "No device with this MAC address was found on the network recently. Try entering the IP address instead.",
       "unknown": "An unexpected error occurred. Please check the logs and try again."
     },
     "abort": {
-      "already_configured": "This device is already configured"
+      "already_configured": "This device is already configured",
+      "not_philips_device": "No Philips heater was found at this address."
     }
   },
   "entity": {

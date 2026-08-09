@@ -14,6 +14,7 @@ This integration focuses only on Philips heaters. It came about after debugging 
 
 ## Features
 
+- 📡 **Automatic device discovery** - Finds and tracks Philips heaters on your network automatically
 - 🌡️ **Climate entity support** - Home Assistant climate integration with multiple HVAC modes
 - 🎯 **Preset modes** - Low, High, Auto, Fan, and Auto+ with configurable temperature offset
 - 🔧 **Default heat preset option** - Choose the preset used when switching to heat mode (useful for Matterbridge and other integrations that only support basic HVAC modes)
@@ -47,10 +48,25 @@ Find "Philips Heater" in HACS Integrations and install it. Or use the button bel
 1. Go to **Settings** → **Devices & Services**
 2. Click **Add Integration**
 3. Search for "Philips Heater"
-4. Enter your heater's IP address
+4. Enter your heater's **IP address or MAC address** (see Device Discovery below)
 5. Click Submit
 
 The integration will automatically discover and configure your heater.
+
+## Device Discovery
+
+Finding the right IP for a Philips heater is annoying, the Philips app only shows you the MAC address, leaving you to dig through your router's DHCP table and hope the address doesn't change later.
+
+This integration handles that in a few ways:
+
+**Adding a device by MAC address**
+If you know your heater's MAC (from the Philips app or your router), you can enter it directly in the setup form instead of an IP. The integration looks up the current IP from the ARP cache and connects from there.
+
+**Automatic discovery**
+Philips heaters broadcast on the network using the `mxchip` hostname (the Wi-Fi module they use internally). Home Assistant watches for DHCP activity matching that hostname and probes new devices via CoAP to confirm they're actually Philips heaters. If confirmed, you'll get a notification to add the device, no IP hunting required.
+
+**Tracking IP changes**
+Once a device is added, Home Assistant continues watching for DHCP broadcasts from the same hostname or MAC prefix. If the heater gets a new IP from your router, the stored address is updated in the background automatically — no user action needed.
 
 ### Device Configuration
 
@@ -90,6 +106,8 @@ The integration provides these entities:
 - **Heating Intensity**: Shows current heating level (Not Heating, Low, High, Medium)
 - **Heating Mode**: Current operating mode (Off, Low, High, Auto, Fan)
 - **Target Temperature**: Configured target temperature (when applicable)
+- **IP Address**: Current IP address of the device (diagnostic)
+- **MAC Address**: Hardware MAC address, if captured at setup (diagnostic)
 
 ### Configuration Entities
 - **Default Heat Preset**: Control preset used when switching to heat mode

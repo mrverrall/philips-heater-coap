@@ -17,6 +17,7 @@ from homeassistant.helpers.storage import Store
 import homeassistant.helpers.entity_registry as er
 
 from .const import DOMAIN, PhilipsApi, get_model_config
+from .helpers import create_coap_client
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,23 +27,6 @@ STORAGE_KEY = "philips_heater_coap"
 WATCHDOG_TIMEOUT = 86400  # seconds without update before reconnecting
 RECONNECT_DELAY_INITIAL = 30  # seconds before first reconnect attempt
 RECONNECT_DELAY_MAX = 3600  # max seconds between reconnect attempts (1 hour)
-
-
-async def _create_coap_client(host: str) -> CoAPClient:
-    """Create a CoAP client restricted to UDP transport.
-
-    aiocoap's default transport list includes tlsclient, which calls
-    ssl.create_default_context() and triggers a blocking filesystem scan on
-    Python 3.14+. All Philips CoAP traffic is coap:// (plain UDP), so TLS
-    and TCP transports are never used and can be safely skipped.
-    """
-    from aiocoap import defaults as _aiocoap_defaults
-    _orig = _aiocoap_defaults.get_default_clienttransports
-    _aiocoap_defaults.get_default_clienttransports = lambda *a, **kw: iter(["udp6"])
-    try:
-        return await CoAPClient.create(host)
-    finally:
-        _aiocoap_defaults.get_default_clienttransports = _orig
 
 
 class HeaterObserveCoordinator:
@@ -69,7 +53,7 @@ class HeaterObserveCoordinator:
         self.status = await self._store.async_load() or {}
         try:
             self.client = await asyncio.wait_for(
-                    _create_coap_client(self.host), timeout=15
+                    create_coap_client(self.host), timeout=15
                 )
         except Exception as err:
             raise ConfigEntryNotReady(f"Cannot connect to {self.host}") from err
@@ -121,7 +105,7 @@ class HeaterObserveCoordinator:
                 try:
                     _LOGGER.info("Connecting to %s", self.host)
                     self.client = await asyncio.wait_for(
-                        _create_coap_client(self.host), timeout=30
+                        create_coap_client(self.host), timeout=30
                     )
                     _LOGGER.info("Connected to %s", self.host)
                     self._connected_at = time.monotonic()
@@ -263,6 +247,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Backfill unique_id for entries added before DHCP discovery support
+    if entry.unique_id is None and (raw_device_id := entry.data.get("device_id")):
+        hass.config_entries.async_update_entry(entry, unique_id=raw_device_id)
+
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     return True
