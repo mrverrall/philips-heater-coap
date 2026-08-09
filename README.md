@@ -3,12 +3,17 @@
 [![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5?style=flat-square&logo=home-assistant&logoColor=white)](https://github.com/hacs/integration)
 [![Latest Release](https://img.shields.io/github/v/release/mrverrall/philips-heater-coap?style=flat-square)](https://github.com/mrverrall/philips-heater-coap/releases/latest)
 [![License](https://img.shields.io/github/license/mrverrall/philips-heater-coap?style=flat-square)](LICENSE)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-support%20this%20project-FF5E5B?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/mrverrall)
 
 A Home Assistant custom component for **Philips heaters** (CX3120, CX5120) that uses CoAP for direct local control. It communicates with the heater on your LAN and does not require the Philips cloud service or mobile app. Internet access is not required.
 
 ## About This Project
 
-This integration focuses only on Philips heaters. It came about after debugging and patching an ocillation control issues with [philips-airpurifier-coap](https://github.com/kongo09/philips-airpurifier-coap) by [@kongo09](https://github.com/kongo09), which is an broarder implementation for Philips CoAP devices.
+This integration focuses only on Philips heaters. It came about after debugging and patching an oscillation control issue with [philips-airpurifier-coap](https://github.com/kongo09/philips-airpurifier-coap) by [@kongo09](https://github.com/kongo09), which is a broader implementation for Philips CoAP devices.
+
+This is a hobby project maintained in spare time — built for my own heater, grown to support others. I've even bought a CX3120 just to be able to reproduce and fix issues properly. If this saves you some hassle and you'd like to say thanks, a Ko-fi goes a long way:
+
+[![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/mrverrall)
 
 **Credit**: Thanks to [@kongo09](https://github.com/kongo09) for the comprehensive multi-device implementation and to previous contributors in the lineage of Philips CoAP projects.
 
