@@ -7,7 +7,6 @@ import logging
 import re
 from typing import Any
 
-from aioairctrl import CoAPClient
 import voluptuous as vol
 
 from homeassistant import config_entries
@@ -17,54 +16,11 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.device_registry import format_mac
 
 from .const import DOMAIN, PhilipsApi, SUPPORTED_MODELS
-from .helpers import arp_lookup_mac, arp_lookup_ip, create_coap_client
+from .helpers import arp_lookup_mac, arp_lookup_ip, create_coap_client, get_status_via_tickle
 
 _LOGGER = logging.getLogger(__name__)
 
-_BACKLIGHT_FIELD = "D03105"  # display backlight (0=off, 1=on)
 _MAC_RE = re.compile(r"^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$")
-
-
-async def _get_status_via_tickle(client: CoAPClient) -> dict | None:
-    """Get device status using the observe + brightness-tickle pattern.
-
-    The device only pushes status notifications when state changes, so we
-    alternate the display backlight between 0 and 1 to force a push.
-    We start with 0 (off) because 1 (on) is the most common resting state,
-    making the first attempt the most likely to trigger a change.
-    Once a status update arrives we restore the backlight to its original value.
-    """
-    for write_value in (0, 1):
-        # Fresh generator each attempt — a cancelled __anext__() leaves the
-        # generator in a broken state and subsequent calls raise StopAsyncIteration.
-        observe_gen = client.observe_status()
-        try:
-            # Start the observe GET as a background task BEFORE sending the
-            # write, so the CoAP observe registration is in-flight when the
-            # device processes the write and decides to push a notification.
-            anext_task = asyncio.create_task(observe_gen.__anext__())
-            await asyncio.sleep(0.2)  # yield so the GET packet is dispatched
-
-            await client.set_control_value(_BACKLIGHT_FIELD, write_value)
-
-            try:
-                status = await asyncio.wait_for(anext_task, timeout=5)
-            except (asyncio.TimeoutError, StopAsyncIteration):
-                # TimeoutError: device didn't respond — try the other value.
-                # StopAsyncIteration: observe stream ended unexpectedly.
-                anext_task.cancel()
-                await asyncio.gather(anext_task, return_exceptions=True)
-                continue
-
-            # Got status — restore backlight to its original state.
-            original_value = 1 - write_value
-            await client.set_control_value(_BACKLIGHT_FIELD, original_value)
-            return status
-        finally:
-            await observe_gen.aclose()
-
-    _LOGGER.warning("config_flow tickle: no status received after two attempts")
-    return None
 
 
 class PhilipsHeaterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -106,7 +62,7 @@ class PhilipsHeaterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     )
 
                     try:
-                        status = await _get_status_via_tickle(client)
+                        status = await get_status_via_tickle(client)
                     finally:
                         await client.shutdown()
 
@@ -159,7 +115,7 @@ class PhilipsHeaterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             client = await asyncio.wait_for(create_coap_client(ip), timeout=10)
             try:
-                status = await _get_status_via_tickle(client)
+                status = await get_status_via_tickle(client)
             finally:
                 await client.shutdown()
         except Exception:

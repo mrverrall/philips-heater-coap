@@ -1,9 +1,12 @@
 """Shared network helpers for Philips Heater integration."""
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from aioairctrl import CoAPClient
+
+_BACKLIGHT_FIELD = "D03105"  # display backlight (0=off, 1=on)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,3 +52,39 @@ async def create_coap_client(host: str) -> CoAPClient:
         return await CoAPClient.create(host)
     finally:
         _aiocoap_defaults.get_default_clienttransports = _orig
+
+
+async def get_status_via_tickle(client: CoAPClient, timeout: float = 5.0) -> dict | None:
+    """Force a CoAP status push by toggling the display backlight.
+
+    Some models won't push on observe registration alone. Tries backlight=0
+    first (most common resting state is 1), then backlight=1 if no response.
+    Restores the original value after a successful push.
+    """
+    _LOGGER = logging.getLogger(__name__)
+    for write_value in (0, 1):
+        # Fresh generator each attempt — a cancelled __anext__() leaves the
+        # generator in a broken state and subsequent calls raise StopAsyncIteration.
+        observe_gen = client.observe_status()
+        try:
+            anext_task = asyncio.create_task(observe_gen.__anext__())
+            await asyncio.sleep(0.3)  # let the observe GET be dispatched first
+            try:
+                await client.set_control_value(_BACKLIGHT_FIELD, write_value)
+            except Exception:
+                pass
+            try:
+                status = await asyncio.wait_for(anext_task, timeout=timeout)
+            except (asyncio.TimeoutError, StopAsyncIteration):
+                anext_task.cancel()
+                await asyncio.gather(anext_task, return_exceptions=True)
+                continue
+            try:
+                await client.set_control_value(_BACKLIGHT_FIELD, 1 - write_value)
+            except Exception:
+                pass
+            return status
+        finally:
+            await observe_gen.aclose()
+    _LOGGER.warning("Tickle: no status received from device after two attempts")
+    return None

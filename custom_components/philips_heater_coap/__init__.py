@@ -17,7 +17,7 @@ from homeassistant.helpers.storage import Store
 import homeassistant.helpers.entity_registry as er
 
 from .const import DOMAIN, PhilipsApi, get_model_config
-from .helpers import create_coap_client
+from .helpers import create_coap_client, get_status_via_tickle
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,14 +60,12 @@ class HeaterObserveCoordinator:
 
         # Pull the first observe response synchronously — full device state snapshot
         # (includes MODEL_ID/D01S05); subsequent heartbeats are delta-only.
-        try:
-            _initial_gen = self.client.observe_status()
-            initial_status = await asyncio.wait_for(_initial_gen.__anext__(), timeout=10)
-            await _initial_gen.aclose()
+        initial_status = await get_status_via_tickle(self.client, timeout=10.0)
+        if initial_status:
             self.status.update(initial_status)
             await self._store.async_save(self.status)
-        except Exception as err:
-            _LOGGER.debug("Could not get initial status, using cache: %s", err)
+        else:
+            _LOGGER.debug("Could not get initial status, using cache")
 
         self._connected_at = time.monotonic()
         self._task = asyncio.create_task(self._async_observe_status())
