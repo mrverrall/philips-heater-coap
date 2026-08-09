@@ -96,10 +96,10 @@ The integration provides these entities:
 
 ### Cannot Connect to Heater
 
-1. Verify the heater is on the same network as Home Assistant
+1. Make sure the heater is on the same network as Home Assistant. If it's on a guest or IoT VLAN with client isolation enabled, CoAP traffic won't reach it
 2. Check that UDP port 5683 is not blocked by your firewall
-3. Ensure the IP address is correct and the heater is powered on
-4. Try pinging the heater from the Home Assistant host
+3. Make sure the heater is powered on and responsive
+4. Try pinging the heater's IP from the Home Assistant host to rule out a network issue
 
 ### Debug Logging
 
