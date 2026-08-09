@@ -11,7 +11,7 @@ A Home Assistant custom component for **Philips heaters** (CX3120, CX5120) that 
 
 This integration focuses only on Philips heaters. It came about after debugging and patching an oscillation control issue with [philips-airpurifier-coap](https://github.com/kongo09/philips-airpurifier-coap) by [@kongo09](https://github.com/kongo09), which is a broader implementation for Philips CoAP devices.
 
-This is a hobby project maintained in spare time — built for my own heater, grown to support others. I've even bought a CX3120 just to be able to reproduce and fix issues properly. If this saves you some hassle and you'd like to say thanks, a Ko-fi goes a long way:
+This is a hobby project maintained in spare time grown to support others. I've even bought a CX3120 just to be able to reproduce and fix issues properly. If this saves you some hassle and you'd like to say thanks, a Ko-fi goes a long way:
 
 [![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/mrverrall)
 
