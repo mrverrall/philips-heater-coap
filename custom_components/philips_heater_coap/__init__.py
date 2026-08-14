@@ -17,16 +17,18 @@ from homeassistant.helpers.storage import Store
 import homeassistant.helpers.entity_registry as er
 
 from .const import DOMAIN, PhilipsApi, get_model_config
-from .helpers import create_coap_client, get_status_via_tickle
+from .helpers import check_network_reachable, create_coap_client, get_status_via_tickle
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.CLIMATE, Platform.SELECT, Platform.NUMBER, Platform.SENSOR]
 STORAGE_VERSION = 1
 STORAGE_KEY = "philips_heater_coap"
-WATCHDOG_TIMEOUT = 86400  # seconds without update before reconnecting
-RECONNECT_DELAY_INITIAL = 30  # seconds before first reconnect attempt
-RECONNECT_DELAY_MAX = 3600  # max seconds between reconnect attempts (1 hour)
+IDLE_TICKLE_AFTER = 45  # seconds without any update before nudging the device with a tickle
+TICKLE_RESPONSE_TIMEOUT = 15  # seconds to wait for each tickle attempt's response
+TICKLE_RETRY_ROUNDS = 3  # full 0/1 passes before giving up (NON-confirmable UDP can just drop a packet)
+RECONNECT_DELAY_INITIAL = 5  # seconds before first reconnect attempt
+RECONNECT_DELAY_MAX = 60  # cap backoff at one minute, this is lightweight enough to retry often
 
 
 class HeaterObserveCoordinator:
@@ -36,6 +38,7 @@ class HeaterObserveCoordinator:
         """Initialize coordinator."""
         self.hass = hass
         self.host = host
+        self.entry_id = entry_id
         self.status: dict[str, Any] = {}
         self.client: CoAPClient | None = None
         self._listeners: list = []
@@ -100,6 +103,15 @@ class HeaterObserveCoordinator:
         while True:
             # Ensure we have a valid client before attempting to observe
             if self.client is None:
+                # DHCP discovery may have updated the config entry's host while we
+                # were down; pick up any change instead of hammering a dead IP.
+                current_entry = self.hass.config_entries.async_get_entry(self.entry_id)
+                if current_entry and current_entry.data.get(CONF_HOST) and current_entry.data[CONF_HOST] != self.host:
+                    _LOGGER.info(
+                        "Host for %s changed to %s, using updated address",
+                        self.host, current_entry.data[CONF_HOST],
+                    )
+                    self.host = current_entry.data[CONF_HOST]
                 try:
                     _LOGGER.info("Connecting to %s", self.host)
                     self.client = await asyncio.wait_for(
@@ -117,6 +129,9 @@ class HeaterObserveCoordinator:
                         "Failed to connect to %s: %s. Retrying in %ds...",
                         self.host, err, reconnect_delay,
                     )
+                    reachable = await self.hass.async_add_executor_job(check_network_reachable, self.host)
+                    if not reachable:
+                        _LOGGER.warning("%s appears unreachable at the network level (routing/ARP failure)", self.host)
                     try:
                         await asyncio.sleep(reconnect_delay)
                     except asyncio.CancelledError:
@@ -131,16 +146,25 @@ class HeaterObserveCoordinator:
                     while True:
                         try:
                             status = await asyncio.wait_for(
-                                observe_gen.__anext__(), timeout=WATCHDOG_TIMEOUT
+                                observe_gen.__anext__(), timeout=IDLE_TICKLE_AFTER
                             )
                         except asyncio.TimeoutError:
-                            _LOGGER.warning(
-                                "No status update received from %s in %ds "
-                                "(watchdog triggered), reconnecting...",
-                                self.host,
-                                WATCHDOG_TIMEOUT,
+                            # A control write ends the device's active observe, so close ours first
+                            _LOGGER.debug(
+                                "No update from %s in %ds, sending tickle", self.host, IDLE_TICKLE_AFTER
                             )
-                            break
+                            await observe_gen.aclose()
+                            status = await get_status_via_tickle(
+                                self.client, timeout=TICKLE_RESPONSE_TIMEOUT, rounds=TICKLE_RETRY_ROUNDS
+                            )
+                            if status is None:
+                                _LOGGER.warning(
+                                    "No response to tickle from %s, connection appears stale, "
+                                    "reconnecting...",
+                                    self.host,
+                                )
+                                break
+                            observe_gen = self.client.observe_status()
                         except StopAsyncIteration:
                             break
                         changes = {k: v for k, v in status.items() if self.status.get(k) != v}
@@ -177,7 +201,7 @@ class HeaterObserveCoordinator:
                 finally:
                     await observe_gen.aclose()
 
-                # If observe ends normally or watchdog fires, reconnect
+                # If observe ends normally or the tickle goes unanswered, reconnect
                 _LOGGER.warning("CoAP observe ended for %s, reconnecting...", self.host)
 
             except asyncio.CancelledError:

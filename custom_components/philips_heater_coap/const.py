@@ -47,7 +47,7 @@ class PhilipsApi:
     DISPLAY_BACKLIGHT = "D03105"
     OSCILLATION = "D0320F"
     TIMER = "D03180"
-    TIMER2 = "D03182"
+    UNKNOWN1 = "D03182"  # No observed effect; used by helpers.py as the tickle/keepalive field
 
     # Sensors
     TEMPERATURE = "D03224"      # Current temperature
