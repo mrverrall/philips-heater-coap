@@ -17,7 +17,12 @@ from homeassistant.helpers.storage import Store
 import homeassistant.helpers.entity_registry as er
 
 from .const import DOMAIN, PhilipsApi, get_model_config
-from .helpers import check_network_reachable, create_coap_client, get_status_via_tickle
+from .helpers import (
+    MALFORMED_STATUS_ERRORS,
+    check_network_reachable,
+    create_coap_client,
+    get_status_via_tickle,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -64,13 +69,24 @@ class HeaterObserveCoordinator:
 
         # Pull the first observe response synchronously — full device state snapshot
         # (includes MODEL_ID/D01S05); subsequent heartbeats are delta-only.
-        initial_status = await get_status_via_tickle(self.client, timeout=10.0)
-        if initial_status:
-            self.status.update(initial_status)
+        try:
+            initial_status = await get_status_via_tickle(self.client, timeout=10.0)
+        except MALFORMED_STATUS_ERRORS as err:
+            # The payload is unusable, but receiving it proves the device is online.
             self.available = True
-            await self._store.async_save(self.status)
+            _LOGGER.warning(
+                "Received malformed initial status from %s (%s: %s); using cache",
+                self.host,
+                type(err).__name__,
+                err,
+            )
         else:
-            _LOGGER.debug("Could not get initial status, using cache")
+            if initial_status:
+                self.status.update(initial_status)
+                self.available = True
+                await self._store.async_save(self.status)
+            else:
+                _LOGGER.debug("Could not get initial status, using cache")
 
         self._connected_at = time.monotonic()
         self._task = asyncio.create_task(self._async_observe_status())
@@ -186,9 +202,24 @@ class HeaterObserveCoordinator:
                                 "No update from %s in %ds, sending tickle", self.host, IDLE_TICKLE_AFTER
                             )
                             await observe_gen.aclose()
-                            status = await get_status_via_tickle(
-                                self.client, timeout=TICKLE_RESPONSE_TIMEOUT, rounds=TICKLE_RETRY_ROUNDS
-                            )
+                            try:
+                                status = await get_status_via_tickle(
+                                    self.client,
+                                    timeout=TICKLE_RESPONSE_TIMEOUT,
+                                    rounds=TICKLE_RETRY_ROUNDS,
+                                )
+                            except MALFORMED_STATUS_ERRORS as err:
+                                # A malformed tickle response still confirms liveness.
+                                self._async_set_available(True)
+                                _LOGGER.warning(
+                                    "Received malformed tickle status from %s (%s: %s); "
+                                    "restarting observe",
+                                    self.host,
+                                    type(err).__name__,
+                                    err,
+                                )
+                                observe_gen = self.client.observe_status()
+                                continue
                             if status is None:
                                 _LOGGER.warning(
                                     "No response to tickle from %s, connection appears stale, "
@@ -197,6 +228,20 @@ class HeaterObserveCoordinator:
                                 )
                                 break
                             observe_gen = self.client.observe_status()
+                        except MALFORMED_STATUS_ERRORS as err:
+                            # The async generator ends after a decode error, so create a
+                            # fresh observe stream while preserving the last valid state.
+                            self._async_set_available(True)
+                            _LOGGER.warning(
+                                "Received malformed observe status from %s (%s: %s); "
+                                "restarting observe",
+                                self.host,
+                                type(err).__name__,
+                                err,
+                            )
+                            await observe_gen.aclose()
+                            observe_gen = self.client.observe_status()
+                            continue
                         except StopAsyncIteration:
                             break
                         changes = {k: v for k, v in status.items() if self.status.get(k) != v}

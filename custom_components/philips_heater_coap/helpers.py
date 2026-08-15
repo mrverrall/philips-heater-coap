@@ -6,6 +6,11 @@ import logging
 import socket
 
 from aioairctrl import CoAPClient
+from aioairctrl.coap.encryption import DigestMismatchException
+
+# A response was received, but aioairctrl could not decode its encrypted status
+# payload. These errors prove the device responded even though its state is unusable.
+MALFORMED_STATUS_ERRORS = (DigestMismatchException, KeyError, ValueError)
 
 # Functionless on both device families (see DEVICE_MAPPING.md) but writes reliably
 # trigger a control status push, so there's no prior value to save/restore.
