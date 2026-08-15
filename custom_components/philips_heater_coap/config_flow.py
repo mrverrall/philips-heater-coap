@@ -23,6 +23,45 @@ _LOGGER = logging.getLogger(__name__)
 _MAC_RE = re.compile(r"^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$")
 
 
+async def _async_probe_status(host: str, connect_timeout: float) -> dict[str, Any] | None:
+    """Connect to a device and return its reported status."""
+    client = await asyncio.wait_for(create_coap_client(host), timeout=connect_timeout)
+    try:
+        return await get_status_via_tickle(client)
+    finally:
+        await client.shutdown()
+
+
+def _supported_device_details(
+    status: dict[str, Any] | None, host: str
+) -> tuple[str, str, str] | None:
+    """Return validated name, model, and device ID for a supported heater."""
+    if not status:
+        return None
+
+    model = status.get(PhilipsApi.MODEL_ID)
+    device_id = status.get(PhilipsApi.DEVICE_ID)
+    if not isinstance(model, str) or not isinstance(device_id, str):
+        return None
+
+    model = model.strip()
+    device_id = device_id.strip()
+    if (
+        not model
+        or not device_id
+        or not any(supported_model in model.upper() for supported_model in SUPPORTED_MODELS)
+    ):
+        return None
+
+    name = status.get(PhilipsApi.NAME)
+    if not isinstance(name, str) or not name.strip():
+        name = f"Philips Heater {host}"
+    else:
+        name = name.strip()
+
+    return name, model, device_id
+
+
 class PhilipsHeaterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Philips Heater."""
 
@@ -57,21 +96,14 @@ class PhilipsHeaterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if not errors and host:
                 try:
                     _LOGGER.debug("Connecting to device at %s", host)
-                    client = await asyncio.wait_for(
-                        create_coap_client(host), timeout=30
-                    )
-
-                    try:
-                        status = await get_status_via_tickle(client)
-                    finally:
-                        await client.shutdown()
+                    status = await _async_probe_status(host, connect_timeout=30)
 
                     if status is None:
                         errors["base"] = "cannot_connect"
+                    elif (device_details := _supported_device_details(status, host)) is None:
+                        errors["base"] = "unsupported_device"
                     else:
-                        model     = status.get(PhilipsApi.MODEL_ID, "Unknown")
-                        name      = status.get(PhilipsApi.NAME, f"Philips Heater {host}")
-                        device_id = status.get(PhilipsApi.DEVICE_ID, host)
+                        name, model, device_id = device_details
 
                         await self.async_set_unique_id(device_id)
                         self._abort_if_unique_id_configured(updates={CONF_HOST: host})
@@ -113,22 +145,14 @@ class PhilipsHeaterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # CoAP probe to confirm this is a Philips device and retrieve device_id
         try:
-            client = await asyncio.wait_for(create_coap_client(ip), timeout=10)
-            try:
-                status = await get_status_via_tickle(client)
-            finally:
-                await client.shutdown()
+            status = await _async_probe_status(ip, connect_timeout=10)
         except Exception:
             return self.async_abort(reason="not_philips_device")
 
-        if not status or not status.get(PhilipsApi.DEVICE_ID):
+        if (device_details := _supported_device_details(status, ip)) is None:
             return self.async_abort(reason="not_philips_device")
 
-        model_id = status.get(PhilipsApi.MODEL_ID, "")
-        if not any(key in model_id for key in SUPPORTED_MODELS):
-            return self.async_abort(reason="not_philips_device")
-
-        device_id = status[PhilipsApi.DEVICE_ID]
+        name, model, device_id = device_details
 
         await self.async_set_unique_id(device_id)
         # Already configured: silently update the stored IP and stop
@@ -136,8 +160,8 @@ class PhilipsHeaterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         self._discovery_ip = ip
         self._discovery_mac = mac
-        self._discovery_name = status.get(PhilipsApi.NAME, f"Philips Heater {ip}")
-        self._discovery_model = status.get(PhilipsApi.MODEL_ID, "Unknown")
+        self._discovery_name = name
+        self._discovery_model = model
         self._discovery_device_id = device_id
         self.context["title_placeholders"] = {"name": self._discovery_name}
 

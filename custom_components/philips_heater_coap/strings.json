@@ -16,6 +16,7 @@
     "error": {
       "cannot_connect": "Connection timed out. The device may be slow to respond or unavailable. Please verify the address and try again.",
       "mac_not_found": "No device with this MAC address was found on the network recently. Try entering the IP address instead.",
+      "unsupported_device": "The device did not identify itself as a supported Philips CX3120 or CX5120 heater.",
       "unknown": "An unexpected error occurred. Please check the logs and try again."
     },
     "abort": {
