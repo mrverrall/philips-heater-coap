@@ -122,7 +122,7 @@ class PhilipsHeaterClimate(ClimateEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        return self._coordinator.status is not None
+        return self._coordinator.available
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -231,17 +231,17 @@ class PhilipsHeaterClimate(ClimateEntity):
         temp = int(temp)
         temp = max(self._attr_min_temp, min(temp, self._attr_max_temp))
 
-        await self._coordinator.client.set_control_values({PhilipsApi.TARGET_TEMP: temp})
+        await self._coordinator.async_set_control_values({PhilipsApi.TARGET_TEMP: temp})
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set HVAC mode."""
         if hvac_mode == HVACMode.OFF:
             await self.async_turn_off()
         elif hvac_mode == HVACMode.AUTO:
-            await self._coordinator.client.set_control_values({PhilipsApi.OPERATING_MODE: 0})
+            await self._coordinator.async_set_control_values({PhilipsApi.OPERATING_MODE: 0})
             await self.async_turn_on()
         elif hvac_mode == HVACMode.FAN_ONLY:
-            await self._coordinator.client.set_control_values({PhilipsApi.OPERATING_MODE: -127})
+            await self._coordinator.async_set_control_values({PhilipsApi.OPERATING_MODE: -127})
             await self.async_turn_on()
         elif hvac_mode == HVACMode.HEAT:
             # Use configured default heat preset
@@ -258,15 +258,15 @@ class PhilipsHeaterClimate(ClimateEntity):
             if current_temp is not None:
                 target = int(current_temp) + offset
                 target = max(self._attr_min_temp, min(target, self._attr_max_temp))
-                await self._coordinator.client.set_control_values({
+                await self._coordinator.async_set_control_values({
                     PhilipsApi.OPERATING_MODE: 0,  # Auto mode
                     PhilipsApi.TARGET_TEMP: target,
                 })
             else:
                 # Fallback to regular auto if no current temperature
-                await self._coordinator.client.set_control_values({PhilipsApi.OPERATING_MODE: 0})
+                await self._coordinator.async_set_control_values({PhilipsApi.OPERATING_MODE: 0})
         elif preset_mode in PRESET_MODES:
-            await self._coordinator.client.set_control_values(PRESET_MODES[preset_mode])
+            await self._coordinator.async_set_control_values(PRESET_MODES[preset_mode])
         else:
             return
 
@@ -275,12 +275,12 @@ class PhilipsHeaterClimate(ClimateEntity):
     async def async_set_swing_mode(self, swing_mode: str) -> None:
         """Set swing mode."""
         value = self._model_config["oscillation_on"] if swing_mode == SWING_ON else self._model_config["oscillation_off"]
-        await self._coordinator.client.set_control_values({PhilipsApi.OSCILLATION: value})
+        await self._coordinator.async_set_control_values({PhilipsApi.OSCILLATION: value})
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn device on."""
-        await self._coordinator.client.set_control_values({PhilipsApi.POWER: 1})
+        await self._coordinator.async_set_control_values({PhilipsApi.POWER: 1})
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn device off."""
-        await self._coordinator.client.set_control_values({PhilipsApi.POWER: 0})
+        await self._coordinator.async_set_control_values({PhilipsApi.POWER: 0})

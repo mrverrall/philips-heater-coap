@@ -96,7 +96,7 @@ class PhilipsHeaterSensorBase(SensorEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        return self._coordinator.status is not None
+        return self._coordinator.available
 
 
 class PhilipsHeaterTemperatureSensor(PhilipsHeaterSensorBase):

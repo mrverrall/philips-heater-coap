@@ -12,7 +12,7 @@ from aioairctrl import CoAPClient
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, Platform
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 from homeassistant.helpers.storage import Store
 import homeassistant.helpers.entity_registry as er
 
@@ -41,6 +41,7 @@ class HeaterObserveCoordinator:
         self.entry_id = entry_id
         self.status: dict[str, Any] = {}
         self.client: CoAPClient | None = None
+        self.available = False
         self._listeners: list = []
         self._task: asyncio.Task | None = None
         self._store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}.{entry_id}")
@@ -66,6 +67,7 @@ class HeaterObserveCoordinator:
         initial_status = await get_status_via_tickle(self.client, timeout=10.0)
         if initial_status:
             self.status.update(initial_status)
+            self.available = True
             await self._store.async_save(self.status)
         else:
             _LOGGER.debug("Could not get initial status, using cache")
@@ -94,6 +96,36 @@ class HeaterObserveCoordinator:
             self._listeners.remove(update_callback)
 
         return remove_listener
+
+    @callback
+    def _async_set_available(self, available: bool) -> None:
+        """Update availability and notify listeners when it changes."""
+        if self.available == available:
+            return
+
+        self.available = available
+        for update_callback in tuple(self._listeners):
+            update_callback()
+
+    async def async_set_control_values(self, values: dict[str, Any]) -> None:
+        """Write control values when the heater is connected."""
+        client = self.client
+        if not self.available or client is None:
+            raise HomeAssistantError(f"Philips heater at {self.host} is unavailable")
+
+        try:
+            success = await client.set_control_values(values)
+        except Exception as err:
+            self._async_set_available(False)
+            raise HomeAssistantError(
+                f"Failed to communicate with Philips heater at {self.host}"
+            ) from err
+
+        if success is False:
+            self._async_set_available(False)
+            raise HomeAssistantError(
+                f"Philips heater at {self.host} rejected the command"
+            )
 
     async def _async_observe_status(self) -> None:
         """Observe status updates from device with automatic reconnection."""
@@ -194,9 +226,10 @@ class HeaterObserveCoordinator:
                             self._longest_wait,
                         )
                         reconnect_delay = RECONNECT_DELAY_INITIAL  # Reset retry delay on successful update
+                        self.available = True
                         # Save status to storage for restoration after restart
                         await self._store.async_save(status)
-                        for update_callback in self._listeners:
+                        for update_callback in tuple(self._listeners):
                             update_callback()
                 finally:
                     await observe_gen.aclose()
@@ -213,6 +246,8 @@ class HeaterObserveCoordinator:
                     "Error observing status for %s: %s. Reconnecting in %ds...",
                     self.host, err, reconnect_delay,
                 )
+
+            self._async_set_available(False)
 
             # Wait before reconnecting
             try:
