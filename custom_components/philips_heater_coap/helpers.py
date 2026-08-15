@@ -17,6 +17,7 @@ MALFORMED_STATUS_ERRORS = (DigestMismatchException, KeyError, ValueError)
 _TICKLE_FIELD = "D03182"
 
 _LOGGER = logging.getLogger(__name__)
+_COAP_CLIENT_CREATE_LOCK = asyncio.Lock()
 
 
 def arp_lookup_mac(ip: str) -> str | None:
@@ -53,13 +54,18 @@ async def create_coap_client(host: str) -> CoAPClient:
     Avoids the blocking filesystem scan triggered by aiocoap's TLS transport
     initialisation on Python 3.14+.
     """
-    from aiocoap import defaults as _aiocoap_defaults
-    _orig = _aiocoap_defaults.get_default_clienttransports
-    _aiocoap_defaults.get_default_clienttransports = lambda *a, **kw: iter(["udp6"])
-    try:
-        return await CoAPClient.create(host)
-    finally:
-        _aiocoap_defaults.get_default_clienttransports = _orig
+    # The transport override is process-global, so client creation must not overlap.
+    async with _COAP_CLIENT_CREATE_LOCK:
+        from aiocoap import defaults as _aiocoap_defaults
+
+        original_transports = _aiocoap_defaults.get_default_clienttransports
+        _aiocoap_defaults.get_default_clienttransports = (
+            lambda *args, **kwargs: iter(["udp6"])
+        )
+        try:
+            return await CoAPClient.create(host)
+        finally:
+            _aiocoap_defaults.get_default_clienttransports = original_transports
 
 
 async def get_status_via_tickle(client: CoAPClient, timeout: float = 5.0, rounds: int = 1) -> dict | None:
