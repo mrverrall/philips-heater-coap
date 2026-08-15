@@ -67,8 +67,8 @@ class HeaterObserveCoordinator:
         except Exception as err:
             raise ConfigEntryNotReady(f"Cannot connect to {self.host}") from err
 
-        # Pull the first observe response synchronously — full device state snapshot
-        # (includes MODEL_ID/D01S05); subsequent heartbeats are delta-only.
+        # Pull the first observe response synchronously so model information is
+        # available before entities are created.
         try:
             initial_status = await get_status_via_tickle(self.client, timeout=10.0)
         except MALFORMED_STATUS_ERRORS as err:
