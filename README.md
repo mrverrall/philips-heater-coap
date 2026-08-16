@@ -92,6 +92,13 @@ The integration provides these entities:
 - **Default Heat Preset**: Control preset used when switching to heat mode
 - **Auto+ Temperature Offset**: Set offset for Auto+ preset
 
+### Intentionally Omitted Features
+
+Some controls available in the Philips app are deliberately not exposed because their firmware behaviour is ambiguous or inconsistent:
+
+- **Native device timer**: its action depends on whether the heater is on or off when the timer is set, and cancellation behaviour differs between models. Use Home Assistant automations for scheduled power changes instead.
+- **Philips Auto+ AI**: this firmware-controlled adaptive mode is separate from this integration's Auto+ preset and can change heater behaviour in ways Home Assistant cannot represent. If Home Assistant is your primary controller, disable Auto+ AI in the Philips app. If left enabled, Home Assistant will still report observable device state changes, but it will not show that AI control is active or explain its autonomous adjustments.
+
 ## Troubleshooting
 
 ### Cannot Connect to Heater
