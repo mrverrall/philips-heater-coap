@@ -7,18 +7,47 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to attach asset to (e.g. v1.4)"
+        description: "Existing tag to release (e.g. v1.9.0-rc.1)"
         required: true
+        type: string
 
 permissions:
   contents: write
 
 jobs:
+  validate:
+    uses: ./.github/workflows/validate.yaml
+    with:
+      ref: ${{ inputs.tag || github.ref }}
+    permissions:
+      contents: read
+
   build:
+    needs: validate
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Verify release version
+        shell: bash
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[1-9][0-9]*)?$ ]]; then
+            echo "Release tag must use vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-{alpha,beta,rc}.NUMBER format"
+            exit 1
+          fi
+
+          release_version="${RELEASE_TAG#v}"
+          manifest_version="$(jq -r '.version' custom_components/philips_heater_coap/manifest.json)"
+          if [[ "$manifest_version" != "$release_version" ]]; then
+            echo "Manifest version '$manifest_version' does not match tag version '$release_version'"
+            exit 1
+          fi
 
       - name: Create release zip
         run: |
@@ -36,4 +65,9 @@ jobs:
         with:
           files: philips-heater-coap.zip
           draft: true
-          tag_name: ${{ inputs.tag || github.ref_name }}
+          prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
+          make_latest: ${{ contains(env.RELEASE_TAG, '-') && 'false' || 'true' }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          name: Philips Heater ${{ env.RELEASE_TAG }}
+          tag_name: ${{ env.RELEASE_TAG }}

@@ -2,11 +2,24 @@ name: Validate
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+  pull_request:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to validate"
+        required: false
+        type: string
   workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to validate (defaults to the current ref)"
+        required: false
+        type: string
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   validate:
@@ -15,6 +28,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
 
       - name: HACS Validation
         uses: hacs/action@main
