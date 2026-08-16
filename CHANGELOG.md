@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Active connection monitoring**: After an idle period, the integration now uses a functionless device field to request a status update. Unanswered requests trigger reconnection with shorter exponential backoff, and reconnects pick up DHCP-discovered IP address changes.
+- **Documentation**: Improved setup and troubleshooting guidance, updated discovered protocol mappings, and documented Philips app controls intentionally omitted from the integration.
+
+### Fixed
+- **Offline availability**: Climate and dynamic sensor entities now become unavailable when the heater stops responding or rejects a command, and recover when communication resumes.
+- **Malformed status updates**: Undecodable device responses now preserve the last valid state, count as proof that the heater is available, and restart the observe stream instead of causing repeated full reconnects.
+- **Manual setup validation**: Devices added by IP or MAC must now report a complete identity for a supported CX3120 or CX5120 heater, matching automatic discovery validation.
+- **Concurrent CoAP client creation**: Client creation is serialized while the integration temporarily overrides aiocoap's process-wide transport defaults, preventing overlapping setup attempts from interfering with other clients.
+
 ## [1.8] - 2026-08-09
 
 ### Added
