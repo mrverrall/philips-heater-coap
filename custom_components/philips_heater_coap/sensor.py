@@ -135,7 +135,6 @@ class PhilipsHeaterIntensitySensor(PhilipsHeaterSensorBase):
     """Heating status sensor for Philips Heater."""
 
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_options = list(HEATING_INTENSITY_MAP.values())
     _attr_name = "Heating Intensity"
 
@@ -167,7 +166,6 @@ class PhilipsHeaterHeatingModeSensor(PhilipsHeaterSensorBase):
     """Heating mode sensor for Philips Heater."""
 
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_options = HEATING_MODE_VALUES
     _attr_name = "Heating Mode"
 
@@ -204,7 +202,6 @@ class PhilipsHeaterTargetTemperatureSensor(PhilipsHeaterSensorBase):
     """Target temperature sensor for Philips Heater."""
 
     _attr_device_class = SensorDeviceClass.TEMPERATURE
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_name = "Target Temperature"

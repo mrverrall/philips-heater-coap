@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Active connection monitoring**: After an idle period, the integration now uses a functionless device field to request a status update. Unanswered requests trigger reconnection with shorter exponential backoff, and reconnects pick up DHCP-discovered IP address changes.
+- **Entity classification**: Heating Intensity, Heating Mode, and Target Temperature are now shown as operational sensors instead of diagnostic entities.
 - **Documentation**: Improved setup and troubleshooting guidance, updated discovered protocol mappings, and documented Philips app controls intentionally omitted from the integration.
 
 ### Fixed
