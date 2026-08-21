@@ -49,6 +49,6 @@ local_debug_tools/
 secrets.yaml
 *.log
 
-# Local development guidelines
-AI_GUIDELINES.md
+# Local-only agent instructions and development notes
+AGENTS.md
 TODO
