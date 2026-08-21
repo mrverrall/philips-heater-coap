@@ -69,32 +69,41 @@ async def create_coap_client(host: str) -> CoAPClient:
 
 
 async def get_status_via_tickle(client: CoAPClient, timeout: float = 5.0, rounds: int = 1) -> dict | None:
-    """Force a CoAP status push by writing to a functionless control field.
+    """Request a status push by writing to a functionless control field.
 
-    Some models won't push on observe registration alone. Tries two different
-    values in case the device only pushes on an actual value change, repeated
-    for `rounds` passes to ride out isolated packet loss (these are NON-confirmable
-    CoAP messages, so a single lost write or reply otherwise looks like silence).
+    The observation must be active before the write because the resulting push
+    can arrive immediately. Two values are tried per round because some firmware
+    only pushes when the written value changes. Multiple rounds tolerate packet
+    loss from NON-confirmable CoAP messages.
     """
     for _ in range(rounds):
         for tickle_value in (0, 1):
-            # Fresh generator each attempt — a cancelled __anext__() leaves the
-            # generator in a broken state and subsequent calls raise StopAsyncIteration.
+            # A timed-out __anext__ cannot be reused, so each attempt needs a new
+            # observation and its own tasks.
             observe_gen = client.observe_status()
+            anext_task = asyncio.create_task(observe_gen.__anext__())
+            write_task: asyncio.Task | None = None
             try:
-                anext_task = asyncio.create_task(observe_gen.__anext__())
-                await asyncio.sleep(0.3)  # let the observe GET be dispatched first
-                try:
-                    await client.set_control_value(_TICKLE_FIELD, tickle_value)
-                except Exception:
-                    pass
+                await asyncio.sleep(0.3)  # Allow the observe GET to reach the device.
+
+                # Do not await the write directly: its response may never arrive
+                # offline. The observed status is the success signal and timeout.
+                write_task = asyncio.create_task(
+                    client.set_control_value(_TICKLE_FIELD, tickle_value)
+                )
                 try:
                     return await asyncio.wait_for(anext_task, timeout=timeout)
                 except (asyncio.TimeoutError, StopAsyncIteration):
-                    anext_task.cancel()
-                    await asyncio.gather(anext_task, return_exceptions=True)
                     continue
             finally:
+                # Drain cancellation before closing the generator to avoid leaving
+                # CoAP request tasks attached to this attempt.
+                anext_task.cancel()
+                tasks = [anext_task]
+                if write_task is not None:
+                    write_task.cancel()
+                    tasks.append(write_task)
+                await asyncio.gather(*tasks, return_exceptions=True)
                 await observe_gen.aclose()
     _LOGGER.warning("Tickle: no status received from device after %d round(s)", rounds)
     return None
