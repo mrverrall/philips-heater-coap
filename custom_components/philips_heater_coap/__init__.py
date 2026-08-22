@@ -322,6 +322,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     host = entry.data[CONF_HOST]
 
+    # Remove entities that were exposed during development but are no longer
+    # provided by the integration. Run this before connecting so cleanup does
+    # not depend on the heater being reachable.
+    device_id = entry.data.get("device_id", entry.entry_id)
+    entity_reg = er.async_get(hass)
+    stale_entities = (
+        (Platform.SELECT, "update_method"),
+        (Platform.NUMBER, "polling_interval"),
+        (Platform.SELECT, "timer"),
+        (Platform.SENSOR, "timer_remaining"),
+        (Platform.SENSOR, "last_contact"),
+    )
+    for platform, unique_id_suffix in stale_entities:
+        entity_id = entity_reg.async_get_entity_id(
+            platform, DOMAIN, f"{device_id}_{unique_id_suffix}"
+        )
+        if entity_id:
+            entity_reg.async_remove(entity_id)
+            _LOGGER.debug("Removed stale entity %s", entity_id)
+
     coordinator = HeaterObserveCoordinator(hass, host, entry.entry_id)
 
     # Coordinator owns all connection logic; raises ConfigEntryNotReady if unreachable
@@ -335,15 +355,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Persist the resolved model so future restarts don't need the device to re-provide it.
     if model_id and model_id != entry.data.get("model"):
         hass.config_entries.async_update_entry(entry, data={**entry.data, "model": model_id})
-
-    # Remove entities that no longer exist (polling was removed in 1.4)
-    device_id = entry.data.get("device_id", entry.entry_id)
-    entity_reg = er.async_get(hass)
-    for unique_id_suffix in ("update_method", "polling_interval"):
-        entity_id = entity_reg.async_get_entity_id(Platform.SELECT if unique_id_suffix == "update_method" else Platform.NUMBER, DOMAIN, f"{device_id}_{unique_id_suffix}")
-        if entity_id:
-            entity_reg.async_remove(entity_id)
-            _LOGGER.debug("Removed stale entity %s", entity_id)
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
