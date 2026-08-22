@@ -16,7 +16,12 @@ from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 from homeassistant.helpers.storage import Store
 import homeassistant.helpers.entity_registry as er
 
-from .const import DOMAIN, PhilipsApi, get_model_config
+from .const import (
+    CONTROL_DIFF_IGNORED_FIELDS,
+    DOMAIN,
+    PhilipsApi,
+    get_model_config,
+)
 from .helpers import (
     MALFORMED_STATUS_ERRORS,
     check_network_reachable,
@@ -192,6 +197,7 @@ class HeaterObserveCoordinator:
                 observe_gen = self.client.observe_status()
                 try:
                     while True:
+                        received_via_tickle = False
                         try:
                             status = await asyncio.wait_for(
                                 observe_gen.__anext__(), timeout=IDLE_TICKLE_AFTER
@@ -227,6 +233,7 @@ class HeaterObserveCoordinator:
                                     self.host,
                                 )
                                 break
+                            received_via_tickle = True
                             observe_gen = self.client.observe_status()
                         except MALFORMED_STATUS_ERRORS as err:
                             # The async generator ends after a decode error, so create a
@@ -258,13 +265,41 @@ class HeaterObserveCoordinator:
                         )
                         conn_age = now - self._connected_at if self._connected_at is not None else None
                         status_type = status.get(PhilipsApi.STATUS_TYPE, "unknown")
-                        log = _LOGGER.info if status_type == "control" else _LOGGER.debug
+                        logged_changes = changes
+                        is_tickle_response = False
+                        if status_type == "control":
+                            logged_changes = {
+                                key: value
+                                for key, value in changes.items()
+                                if key not in CONTROL_DIFF_IGNORED_FIELDS
+                            }
+                            control_change_keys = set(logged_changes)
+                            # D03182 may repeat its cached value, producing an empty
+                            # diff. Tickle-path context identifies that response unless
+                            # another control field changed at the same time.
+                            is_tickle_response = not (
+                                control_change_keys - {PhilipsApi.TICKLE}
+                            ) and (
+                                received_via_tickle
+                                or PhilipsApi.TICKLE in control_change_keys
+                            )
+
+                        log = (
+                            _LOGGER.info
+                            if status_type == "control" and not is_tickle_response
+                            else _LOGGER.debug
+                        )
+                        event = (
+                            "Tickle response received"
+                            if is_tickle_response
+                            else f"Observe [{status_type}]"
+                        )
                         log(
-                            "Observe [%s] from %s | changed=%s conn_age=%.0fs"
+                            "%s from %s | changed=%s conn_age=%.0fs"
                             " last_interval=%s avg_interval=%s longest_wait=%.1fs",
-                            status_type,
+                            event,
                             self.host,
-                            changes,
+                            logged_changes,
                             conn_age or 0,
                             f"{self._update_intervals[-1]:.1f}s" if self._update_intervals else "n/a",
                             f"{avg:.1f}s" if avg is not None else "n/a",
@@ -322,26 +357,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     host = entry.data[CONF_HOST]
 
-    # Remove entities that were exposed during development but are no longer
-    # provided by the integration. Run this before connecting so cleanup does
-    # not depend on the heater being reachable.
-    device_id = entry.data.get("device_id", entry.entry_id)
-    entity_reg = er.async_get(hass)
-    stale_entities = (
-        (Platform.SELECT, "update_method"),
-        (Platform.NUMBER, "polling_interval"),
-        (Platform.SELECT, "timer"),
-        (Platform.SENSOR, "timer_remaining"),
-        (Platform.SENSOR, "last_contact"),
-    )
-    for platform, unique_id_suffix in stale_entities:
-        entity_id = entity_reg.async_get_entity_id(
-            platform, DOMAIN, f"{device_id}_{unique_id_suffix}"
-        )
-        if entity_id:
-            entity_reg.async_remove(entity_id)
-            _LOGGER.debug("Removed stale entity %s", entity_id)
-
     coordinator = HeaterObserveCoordinator(hass, host, entry.entry_id)
 
     # Coordinator owns all connection logic; raises ConfigEntryNotReady if unreachable
@@ -355,6 +370,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Persist the resolved model so future restarts don't need the device to re-provide it.
     if model_id and model_id != entry.data.get("model"):
         hass.config_entries.async_update_entry(entry, data={**entry.data, "model": model_id})
+
+    # Remove entities that no longer exist (polling was removed in 1.4)
+    device_id = entry.data.get("device_id", entry.entry_id)
+    entity_reg = er.async_get(hass)
+    for unique_id_suffix in ("update_method", "polling_interval"):
+        entity_id = entity_reg.async_get_entity_id(Platform.SELECT if unique_id_suffix == "update_method" else Platform.NUMBER, DOMAIN, f"{device_id}_{unique_id_suffix}")
+        if entity_id:
+            entity_reg.async_remove(entity_id)
+            _LOGGER.debug("Removed stale entity %s", entity_id)
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator

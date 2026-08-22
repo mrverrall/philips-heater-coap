@@ -8,13 +8,11 @@ import socket
 from aioairctrl import CoAPClient
 from aioairctrl.coap.encryption import DigestMismatchException
 
+from .const import PhilipsApi
+
 # A response was received, but aioairctrl could not decode its encrypted status
 # payload. These errors prove the device responded even though its state is unusable.
 MALFORMED_STATUS_ERRORS = (DigestMismatchException, KeyError, ValueError)
-
-# Functionless on both device families (see DEVICE_MAPPING.md) but writes reliably
-# trigger a control status push, so there's no prior value to save/restore.
-_TICKLE_FIELD = "D03182"
 
 _LOGGER = logging.getLogger(__name__)
 _COAP_CLIENT_CREATE_LOCK = asyncio.Lock()
@@ -89,7 +87,7 @@ async def get_status_via_tickle(client: CoAPClient, timeout: float = 5.0, rounds
                 # Do not await the write directly: its response may never arrive
                 # offline. The observed status is the success signal and timeout.
                 write_task = asyncio.create_task(
-                    client.set_control_value(_TICKLE_FIELD, tickle_value)
+                    client.set_control_value(PhilipsApi.TICKLE, tickle_value)
                 )
                 try:
                     return await asyncio.wait_for(anext_task, timeout=timeout)
@@ -103,7 +101,9 @@ async def get_status_via_tickle(client: CoAPClient, timeout: float = 5.0, rounds
                 if write_task is not None:
                     write_task.cancel()
                     tasks.append(write_task)
-                await asyncio.gather(*tasks, return_exceptions=True)
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                if write_task is not None and isinstance(results[-1], Exception):
+                    _LOGGER.debug("Tickle control write failed: %s", results[-1])
                 await observe_gen.aclose()
     _LOGGER.warning("Tickle: no status received from device after %d round(s)", rounds)
     return None

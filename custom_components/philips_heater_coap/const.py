@@ -47,13 +47,20 @@ class PhilipsApi:
     DISPLAY_BACKLIGHT = "D03105"
     OSCILLATION = "D0320F"
     TIMER = "D03180"
-    UNKNOWN1 = "D03182"  # No observed effect; used by helpers.py as the tickle/keepalive field
+    TICKLE = "D03182"  # Functionless field used to request a status response
 
     # Sensors
     TEMPERATURE = "D03224"      # Current temperature
     FAN_SPEED = "D0310D"        # Unknown function (constant at 2)
     HEATING_STATUS = "D0313F"   # Heating action/intensity status (0, 65, 66, 67, -16)
     STATUS_TYPE = "StatusType"  # Update type: "control" (user action) or "status" (periodic ~20s heartbeat)
+
+
+# Bookkeeping values change in control responses but do not represent user-facing
+# heater controls.
+CONTROL_DIFF_IGNORED_FIELDS = frozenset(
+    {"Runtime", "rssi", "free_memory", PhilipsApi.STATUS_TYPE}
+)
 
 
 # Heating status to HVAC action mapping (maps HEATING_STATUS sensor values)
