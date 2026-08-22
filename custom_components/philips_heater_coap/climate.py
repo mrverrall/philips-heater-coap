@@ -151,7 +151,7 @@ class PhilipsHeaterClimate(ClimateEntity):
         status = self._coordinator.status
         temp = status.get(PhilipsApi.TEMPERATURE)
         if temp is not None:
-            return temp / 10  # Device returns temp * 10
+            return int(temp / 10)  # Match the Philips app, which drops tenths
         return None
 
     @property

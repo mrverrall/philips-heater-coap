@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Active connection monitoring**: After an idle period, the integration now uses a functionless device field to request a status update. Unanswered requests trigger reconnection with shorter exponential backoff, and reconnects pick up DHCP-discovered IP address changes.
-- **Temperature display**: Current temperature is shown in whole degrees while retaining tenths in the temperature sensor's state for history and graphs.
+- **Temperature display**: Climate temperature now truncates to whole degrees to match the Philips app, while the temperature sensor retains tenths for history and graphs.
 - **Entity classification**: Heating Intensity, Heating Mode, and Target Temperature are now shown as operational sensors instead of diagnostic entities.
 - **Documentation**: Improved setup and troubleshooting guidance, updated discovered protocol mappings, and documented Philips app controls intentionally omitted from the integration.
 
