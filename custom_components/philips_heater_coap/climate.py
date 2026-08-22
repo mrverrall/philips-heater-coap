@@ -14,7 +14,12 @@ from homeassistant.components.climate import (
     HVACMode,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_TEMPERATURE, CONF_HOST, UnitOfTemperature
+from homeassistant.const import (
+    ATTR_TEMPERATURE,
+    CONF_HOST,
+    PRECISION_WHOLE,
+    UnitOfTemperature,
+)
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -62,6 +67,7 @@ class PhilipsHeaterClimate(ClimateEntity):
     """Representation of a Philips Heater climate device."""
 
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_precision = PRECISION_WHOLE
     _attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT, HVACMode.AUTO, HVACMode.FAN_ONLY]
     _attr_target_temperature_step = TARGET_TEMP_STEP
     _attr_min_temp = MIN_TEMP
