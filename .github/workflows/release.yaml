@@ -30,7 +30,7 @@ jobs:
 
     steps:
       - name: Checkout release tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
 
@@ -61,7 +61,7 @@ jobs:
           zip -r ../../philips-heater-coap.zip .
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: philips-heater-coap.zip
           draft: true
