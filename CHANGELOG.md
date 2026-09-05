@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-09-05
+
+### Added
+- **Active connection monitoring**: After an idle period, the integration now uses a functionless device field to request a status update. Unanswered requests mark the heater unavailable and trigger reconnection with bounded attempts and shorter exponential backoff.
+- **Release safeguards**: Release builds now validate HACS and Hassfest checks, enforce matching semantic versions between tags and the integration manifest, and correctly classify prereleases.
+
 ### Changed
-- **Active connection monitoring**: After an idle period, the integration now uses a functionless device field to request a status update. Unanswered requests trigger reconnection with shorter exponential backoff, and reconnects pick up DHCP-discovered IP address changes.
+- **Reconnect address tracking**: Reconnects now pick up DHCP-discovered IP address changes instead of continuing to use a stale address.
 - **Temperature display**: Climate temperature now truncates to whole degrees to match the Philips app, while the temperature sensor retains tenths for history and graphs.
 - **Entity classification**: Heating Intensity, Heating Mode, and Target Temperature are now shown as operational sensors instead of diagnostic entities.
 - **Documentation**: Improved setup and troubleshooting guidance, updated discovered protocol mappings, and documented Philips app controls intentionally omitted from the integration.
@@ -18,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Malformed status updates**: Undecodable device responses now preserve the last valid state, count as proof that the heater is available, and restart the observe stream instead of causing repeated full reconnects.
 - **Manual setup validation**: Devices added by IP or MAC must now report a complete identity for a supported CX3120 or CX5120 heater, matching automatic discovery validation.
 - **Concurrent CoAP client creation**: Client creation is serialized while the integration temporarily overrides aiocoap's process-wide transport defaults, preventing overlapping setup attempts from interfering with other clients.
+- **Idle status requests**: Tickle writes no longer wait indefinitely when a heater is offline, and their responses are handled without misleading control-change logs.
 
 ## [1.8] - 2026-08-09
 
