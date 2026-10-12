@@ -8,6 +8,7 @@ _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "philips_heater_coap"
 MANUFACTURER = "Philips"
+CONTROL_WRITE_TIMEOUT = 15  # Total seconds, including aioairctrl retries/resyncs.
 
 # Known OUI prefixes for the MXChip AZ3166 Wi-Fi module used in these heaters
 MXCHIP_OUI_PREFIXES = (

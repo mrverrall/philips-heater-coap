@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Control write timeout**: All entity control writes now have a 15-second deadline, including library retries and resynchronisation. A missing reply reports an uncertain command outcome without marking the heater unavailable; observation monitoring continues to manage availability and reconnection.
+
 ## [1.9.0] - 2026-09-05
 
 ### Added

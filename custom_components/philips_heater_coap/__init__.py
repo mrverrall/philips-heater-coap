@@ -18,6 +18,7 @@ import homeassistant.helpers.entity_registry as er
 
 from .const import (
     CONTROL_DIFF_IGNORED_FIELDS,
+    CONTROL_WRITE_TIMEOUT,
     DOMAIN,
     PhilipsApi,
     get_model_config,
@@ -135,7 +136,22 @@ class HeaterObserveCoordinator:
             raise HomeAssistantError(f"Philips heater at {self.host} is unavailable")
 
         try:
-            success = await client.set_control_values(values)
+            success = await asyncio.wait_for(
+                client.set_control_values(values), timeout=CONTROL_WRITE_TIMEOUT
+            )
+        except TimeoutError as err:
+            # A missing POST reply does not mean the command failed or the heater
+            # is offline. Leave liveness/reconnection to the observe monitor.
+            _LOGGER.warning(
+                "Control write to %s timed out after %ss; the command may have "
+                "been applied",
+                self.host,
+                CONTROL_WRITE_TIMEOUT,
+            )
+            raise HomeAssistantError(
+                f"Timed out waiting for Philips heater at {self.host} to confirm "
+                "the command; it may have been applied"
+            ) from err
         except Exception as err:
             self._async_set_available(False)
             raise HomeAssistantError(
