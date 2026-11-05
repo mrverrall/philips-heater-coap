@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Recovery after DHCP address changes**: Known heaters are matched by their saved MAC address before probing, so a heater that is still starting no longer leaves reconnection stuck on its old IP. Existing entities and settings are preserved.
+- **Discovery during startup**: New-device discovery retries transient connection failures and incomplete status responses with bounded delays before giving up.
+- **Offline integration reloads**: Offline entries load cached state and continue reconnecting in the background. Shutdown waits for observation cancellation before closing the client.
+- **Manual rediscovery**: Re-adding an existing heater updates its address and exits cleanly instead of reporting an unexpected error. Address updates use the entry's reload listener to avoid duplicate reloads.
+
+### Changed
+- **Recovery diagnostics**: Add focused debug logs for discovery, retry attempts, validation failures, and setup, with address changes logged at info level.
+
+### Development
+- Add 12 recovery regression tests to CI. DHCP address-change recovery was also validated on a physical CX3120 while preserving its existing Home Assistant entry.
+
 ## [1.9.1-rc.1] - 2026-10-12
 
 ### Fixed

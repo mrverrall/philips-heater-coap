@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import suppress
 import logging
 import time
 from typing import Any
@@ -12,7 +13,7 @@ from aioairctrl import CoAPClient
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, Platform
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.storage import Store
 import homeassistant.helpers.entity_registry as er
 
@@ -71,36 +72,55 @@ class HeaterObserveCoordinator:
                     create_coap_client(self.host), timeout=15
                 )
         except Exception as err:
-            raise ConfigEntryNotReady(f"Cannot connect to {self.host}") from err
+            _LOGGER.warning(
+                "Cannot connect during startup; using cached state and reconnecting "
+                "in the background: entry_id=%s host=%s error=%s: %s",
+                self.entry_id, self.host, type(err).__name__, err,
+            )
 
         # Pull the first observe response synchronously so model information is
         # available before entities are created.
-        try:
-            initial_status = await get_status_via_tickle(self.client, timeout=10.0)
-        except MALFORMED_STATUS_ERRORS as err:
-            # The payload is unusable, but receiving it proves the device is online.
-            self.available = True
-            _LOGGER.warning(
-                "Received malformed initial status from %s (%s: %s); using cache",
-                self.host,
-                type(err).__name__,
-                err,
-            )
-        else:
-            if initial_status:
-                self.status.update(initial_status)
+        if self.client is not None:
+            try:
+                initial_status = await get_status_via_tickle(self.client, timeout=10.0)
+            except MALFORMED_STATUS_ERRORS as err:
+                # The payload is unusable, but receiving it proves the device is online.
                 self.available = True
-                await self._store.async_save(self.status)
+                _LOGGER.warning(
+                    "Received malformed initial status from %s (%s: %s); using cache",
+                    self.host,
+                    type(err).__name__,
+                    err,
+                )
+            except Exception as err:
+                _LOGGER.warning(
+                    "Initial status request failed for %s (%s: %s); "
+                    "using cache and reconnecting in the background",
+                    self.host, type(err).__name__, err,
+                )
+                try:
+                    await self.client.shutdown()
+                except Exception as shutdown_err:
+                    _LOGGER.debug("Error during client shutdown: %s", shutdown_err)
+                self.client = None
             else:
-                _LOGGER.debug("Could not get initial status, using cache")
+                if initial_status:
+                    self.status.update(initial_status)
+                    self.available = True
+                    await self._store.async_save(self.status)
+                else:
+                    _LOGGER.debug("Could not get initial status, using cache")
 
-        self._connected_at = time.monotonic()
+        self._connected_at = time.monotonic() if self.client is not None else None
         self._task = asyncio.create_task(self._async_observe_status())
 
     async def shutdown(self) -> None:
         """Shutdown the connection."""
         if self._task:
             self._task.cancel()
+            with suppress(asyncio.CancelledError):
+                await self._task
+            self._task = None
         if self.client:
             try:
                 await self.client.shutdown()
@@ -372,10 +392,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Philips Heater from a config entry."""
 
     host = entry.data[CONF_HOST]
+    _LOGGER.debug(
+        "Setting up heater entry: entry_id=%s host=%s",
+        entry.entry_id, host,
+    )
 
     coordinator = HeaterObserveCoordinator(hass, host, entry.entry_id)
 
-    # Coordinator owns all connection logic; raises ConfigEntryNotReady if unreachable
+    # Offline entries still load; the coordinator reconnects in the background.
     await coordinator.async_start()
 
     # Prefer MODEL_ID from the cached live status — the config-flow tickle may produce a
@@ -412,6 +436,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload config entry when options change."""
+    _LOGGER.debug(
+        "Entry update listener requesting reload: entry_id=%s host=%s mac=%s",
+        entry.entry_id, entry.data.get(CONF_HOST), entry.data.get("mac"),
+    )
     await hass.config_entries.async_reload(entry.entry_id)
 
 

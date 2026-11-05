@@ -31,6 +31,9 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
 
+      - name: Recovery regression tests
+        run: python3 -m unittest discover -s tests -v
+
       - name: HACS Validation
         uses: hacs/action@main
         with:
