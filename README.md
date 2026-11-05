@@ -37,7 +37,9 @@ This is a hobby project maintained in spare time grown to support others. I've e
 
 ### Marketplace (Recommended)
 
-Find **Philips Heater** in Marketplace and install it, or [open this repository in Marketplace](https://my.home-assistant.io/redirect/hacs_repository/?owner=mrverrall&repository=philips-heater-coap&category=integration).
+Find **Philips Heater** in Marketplace and install it, or use the button below.
+
+[![Open this repository in Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mrverrall&repository=philips-heater-coap&category=integration)
 
 ### Manual Installation
 
