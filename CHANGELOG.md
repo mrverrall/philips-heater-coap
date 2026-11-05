@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.1-rc.2] - 2026-11-05
+
 ### Fixed
 - **Recovery after DHCP address changes**: Known heaters are matched by their saved MAC address before probing, so a heater that is still starting no longer leaves reconnection stuck on its old IP. Existing entities and settings are preserved.
 - **Discovery during startup**: New-device discovery retries transient connection failures and incomplete status responses with bounded delays before giving up.
