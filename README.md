@@ -52,21 +52,9 @@ Find "Philips Heater" in HACS Integrations and install it. Or use the button bel
 
 ### Adding your heater
 
-If Home Assistant detects your heater on the network, you'll get a notification to add it. Just confirm and you're done. The integration watches for Philips heaters broadcasting on your network and probes any match to confirm it's genuine.
+If Home Assistant detects your heater on the network, you'll get a notification to add it. Just confirm and you're done. Allow a few minutes for discovery after powering on the heater.
 
 If it doesn't appear automatically, go to **Settings** → **Devices & Services** → **Add Integration**, search for "Philips Heater", and enter either the heater's IP address or its MAC address (shown in the Philips app). IP changes are tracked automatically, so you don't need a static IP.
-
-When DHCP reports a new address for a heater with a saved MAC address, the
-integration updates the existing entry immediately and reconnects in the
-background. Its entities and settings are preserved, even if the heater's CoAP
-service is still starting. Reloading an offline heater also keeps background
-reconnection active.
-
-New-device discovery still validates the model and device ID before offering a
-heater to add. If the initial probe fails or returns an incomplete status,
-discovery retries after 15, 30, 60, and 120 seconds. Allow about six minutes for
-these attempts; a device that reports an unsupported model is rejected without
-further retries.
 
 ### Device settings
 
@@ -123,31 +111,6 @@ Some controls available in the Philips app are deliberately not exposed because 
 ### Debug Logging
 
 Enable debug logging via the integration page.
-
-For IP-change recovery investigations, also capture Home Assistant's discovery
-logging. Add these loggers under `logger:` in `configuration.yaml` (merge with any
-existing logger settings), then restart Home Assistant before taking the heater
-offline:
-
-```yaml
-logger:
-  logs:
-    custom_components.philips_heater_coap: debug
-    homeassistant.components.dhcp: debug
-    homeassistant.config_entries: debug
-    homeassistant.helpers.discovery_flow: debug
-```
-
-Keep logging enabled through the DHCP address change and any integration reload.
-If recovery fails, record when the heater rejoined Wi-Fi and when you reload,
-delete, or re-add it. Save the logs covering the whole sequence, including the
-Home Assistant loggers above. Integration logs show discovery arrivals, probe
-failures and retries, identity validation, and address changes. Home Assistant's
-discovery logs help identify events that never reach the integration.
-
-Remove the temporary debug logger settings after capturing the issue. Debug
-messages are otherwise disabled; address changes and operational warnings remain
-visible at their normal log levels.
 
 ## License
 
