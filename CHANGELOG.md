@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-11-05
+
+### Fixed
+- **DHCP recovery**: Update known heaters by saved MAC address before probing, so reconnection uses their new IP even while CoAP is still starting. Preserve existing entities and settings.
+- **Discovery retries**: Retry transient connection failures and incomplete status responses when discovering a new heater.
+- **Offline reloads**: Load cached state and keep reconnecting in the background when a heater is unavailable. Wait for observation cancellation before closing the client.
+- **Manual rediscovery**: Update an existing heater's address cleanly and avoid scheduling an additional reload.
+- **Control write timeout**: Bound commands to 15 seconds, including library retries. Report uncertain outcomes without marking the heater unavailable solely because a command reply is missing.
+
+### Changed
+- Retain focused recovery diagnostics and log address changes at info level.
+- Run 12 recovery regression tests in CI. DHCP address-change recovery was also validated on a physical CX3120.
+
 ## [1.9.1-rc.2] - 2026-11-05
 
 ### Fixed
