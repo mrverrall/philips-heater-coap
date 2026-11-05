@@ -1,6 +1,6 @@
 # Philips Heater Integration for Home Assistant
 
-[![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5?style=flat-square&logo=home-assistant&logoColor=white)](https://github.com/hacs/integration)
+[![Marketplace Default](https://img.shields.io/badge/Marketplace-Default-41BDF5?style=flat-square&logo=home-assistant&logoColor=white)](https://github.com/hacs/integration)
 [![Latest Release](https://img.shields.io/github/v/release/mrverrall/philips-heater-coap?style=flat-square)](https://github.com/mrverrall/philips-heater-coap/releases/latest)
 [![License](https://img.shields.io/github/license/mrverrall/philips-heater-coap?style=flat-square)](LICENSE)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-support%20this%20project-FF5E5B?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/mrverrall)
@@ -35,12 +35,9 @@ This is a hobby project maintained in spare time grown to support others. I've e
 
 ## Installation
 
-### HACS (Recommended)
+### Marketplace (Recommended)
 
-Find "Philips Heater" in HACS Integrations and install it. Or use the button below to open this repository directly in HACS.
-
-[![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mrverrall&repository=philips-heater-coap&category=integration)
-
+Find **Philips Heater** in Marketplace and install it, or [open this repository in Marketplace](https://my.home-assistant.io/redirect/hacs_repository/?owner=mrverrall&repository=philips-heater-coap&category=integration).
 
 ### Manual Installation
 
